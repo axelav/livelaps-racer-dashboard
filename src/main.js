@@ -44,7 +44,7 @@ async function showDashboard(raceId, participantId) {
     const message =
       err instanceof UnsupportedFormatError ? err.message : "Couldn't load that race — check the link and try again.";
     history.replaceState({}, '', window.location.pathname);
-    showSearch({ prefillRaceInput: raceId, notice: message });
+    showSearch({ notice: message });
   }
 }
 
