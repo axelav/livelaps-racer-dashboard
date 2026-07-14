@@ -1,6 +1,12 @@
 const RACE_ID_PATTERNS = [/race\/results\/(\d+)/, /race\/filters\/(\d+)/, /race\/config\/(\d+)/, /race\/(\d+)/];
 const EVENT_ID_PATTERN = /eventScores\/(\d+)/;
 
+const API_BASE = 'https://www.livelaps.com/laravel/public/api/v1/livelaps/';
+
+export class UnparseableInputError extends Error {}
+export class MultiRaceEventError extends Error {}
+export class UnsupportedFormatError extends Error {}
+
 export function parseRaceId(input) {
   if (typeof input !== 'string') return null;
   const trimmed = input.trim();
@@ -55,4 +61,66 @@ export function deriveSectionSeries(racer) {
     avgSpeeds: sections.map((s) => parseFloat(s.avgSpeed)),
     gapAheadSeconds: sections.map((s) => parseDuration(s.overallBehindBy))
   };
+}
+
+async function apiGet(path) {
+  const response = await fetch(API_BASE + path);
+  if (!response.ok) {
+    throw new Error(`LiveLaps API request failed: ${response.status} ${path}`);
+  }
+  return response.json();
+}
+
+export async function fetchRace(raceId) {
+  const json = await apiGet(`race/${raceId}`);
+  return { raceName: json.message.Race_Name, modeName: json.message.RACE_MODE_NAME };
+}
+
+export async function fetchAllResults(raceId) {
+  let page = 1;
+  let all = [];
+  while (true) {
+    const json = await apiGet(`race/results/${raceId}?page=${page}&size=1000`);
+    all = all.concat(json.data);
+    if (!json.has_more_pages) break;
+    page += 1;
+  }
+  return all;
+}
+
+export async function fetchEventRaces(eventId) {
+  const json = await apiGet(`race/event/${eventId}`);
+  return json.message;
+}
+
+export async function loadRaceById(raceId) {
+  const [raceMeta, allResults] = await Promise.all([fetchRace(raceId), fetchAllResults(raceId)]);
+  if (raceMeta.modeName !== 'Enduro') {
+    throw new UnsupportedFormatError(
+      "This race format isn't supported yet — Racer Breakdown currently works with section-based (enduro) races."
+    );
+  }
+  return { raceId, raceMeta, allResults };
+}
+
+export async function resolveAndLoadRace(input) {
+  const parsed = parseRaceId(input);
+  if (!parsed) {
+    throw new UnparseableInputError(
+      "Couldn't find a race ID in that — try pasting a LiveLaps race/results/event URL, or just the number."
+    );
+  }
+
+  let raceId = parsed.id;
+  if (parsed.isEvent) {
+    const races = await fetchEventRaces(parsed.id);
+    if (races.length !== 1) {
+      throw new MultiRaceEventError(
+        "This event has multiple races — paste the link for the specific race's results instead."
+      );
+    }
+    raceId = races[0].id;
+  }
+
+  return loadRaceById(raceId);
 }
