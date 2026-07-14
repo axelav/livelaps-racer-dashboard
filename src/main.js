@@ -4,6 +4,7 @@ import { renderSearch } from './search.js';
 import { renderDashboard } from './dashboard.js';
 
 const app = document.getElementById('app');
+let requestId = 0;
 
 function currentParams() {
   const params = new URLSearchParams(window.location.search);
@@ -26,17 +27,23 @@ function showSearchDefault() {
 }
 
 async function showDashboard(raceId, participantId) {
+  const thisRequest = ++requestId;
   try {
     const { raceMeta, allResults } = await loadRaceById(raceId);
+    if (thisRequest !== requestId) return;
     const totals = deriveTotals(allResults, Number(participantId));
     if (!totals) {
+      history.replaceState({}, '', window.location.pathname);
       showSearch({ prefillRaceInput: raceId, notice: "Couldn't find that racer in this race." });
       return;
     }
     renderDashboard(app, { raceMeta, ...totals, onBack: showSearchDefault });
   } catch (err) {
+    if (thisRequest !== requestId) return;
     console.error(err);
-    const message = err instanceof UnsupportedFormatError ? err.message : "Couldn't load that race.";
+    const message =
+      err instanceof UnsupportedFormatError ? err.message : "Couldn't load that race — check the link and try again.";
+    history.replaceState({}, '', window.location.pathname);
     showSearch({ prefillRaceInput: raceId, notice: message });
   }
 }
