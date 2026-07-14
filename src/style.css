@@ -345,6 +345,9 @@ table.data-table th {
   padding: 10px 12px;
   margin: 0 0 16px;
 }
+.notice[hidden] {
+  display: none;
+}
 .notice p {
   margin: 0;
   flex: 1;
