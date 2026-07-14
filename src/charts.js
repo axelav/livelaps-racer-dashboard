@@ -31,3 +31,8 @@ export function niceTicks(min, max, count) {
   }
   return { min: niceMin, max: niceMax, ticks };
 }
+
+export function scaleY(v, dMin, dMax, pxTop, pxBottom, invert) {
+  const t = (v - dMin) / (dMax - dMin);
+  return invert ? pxTop + t * (pxBottom - pxTop) : pxBottom - t * (pxBottom - pxTop);
+}
