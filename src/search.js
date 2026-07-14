@@ -14,7 +14,7 @@ const TEMPLATE = `
         <p class="subhead">Paste a LiveLaps race link (results, filters, or event page) or a bare race ID.</p>
       </div>
 
-      <div class="notice" data-slot="notice" hidden>
+      <div class="notice" data-slot="notice" role="alert" hidden>
         <p data-slot="noticeText"></p>
         <button type="button" data-slot="noticeDismiss" aria-label="Dismiss">&times;</button>
       </div>
@@ -24,12 +24,12 @@ const TEMPLATE = `
         <button type="submit">Look up race</button>
       </form>
 
-      <p class="form-error" data-slot="raceError" hidden></p>
+      <p class="form-error" data-slot="raceError" role="alert" hidden></p>
 
       <div data-slot="participantSection" hidden>
         <p class="card-sub" data-slot="raceName"></p>
         <input type="text" data-slot="participantInput" placeholder="Search by name or bib number" autocomplete="off" />
-        <p class="form-error" data-slot="participantError" hidden></p>
+        <p class="form-error" data-slot="participantError" role="alert" hidden></p>
         <ul class="participant-list" data-slot="participantList"></ul>
       </div>
     </div>
@@ -54,15 +54,23 @@ export function renderSearch(container, { prefillRaceInput, notice, onSelect } =
   let allResults = [];
   let currentRaceId = null;
 
+  let requestId = 0;
+
   slot('raceForm').addEventListener('submit', async (evt) => {
     evt.preventDefault();
     const input = slot('raceInput').value;
     const errorEl = slot('raceError');
+    const submitButton = slot('raceForm').querySelector('button[type="submit"]');
     errorEl.hidden = true;
     slot('participantSection').hidden = true;
 
+    const thisRequest = ++requestId;
+    submitButton.disabled = true;
+    submitButton.textContent = 'Looking up…';
+
     try {
       const { raceId, raceMeta, allResults: results } = await resolveAndLoadRace(input);
+      if (thisRequest !== requestId) return;
       allResults = results;
       currentRaceId = raceId;
       slot('raceName').textContent = raceMeta.raceName;
@@ -71,6 +79,7 @@ export function renderSearch(container, { prefillRaceInput, notice, onSelect } =
       slot('participantList').innerHTML = '';
       slot('participantInput').focus();
     } catch (err) {
+      if (thisRequest !== requestId) return;
       console.error(err);
       if (
         err instanceof UnparseableInputError ||
@@ -82,6 +91,11 @@ export function renderSearch(container, { prefillRaceInput, notice, onSelect } =
         errorEl.textContent = "Couldn't load that race — check the link and try again.";
       }
       errorEl.hidden = false;
+    } finally {
+      if (thisRequest === requestId) {
+        submitButton.disabled = false;
+        submitButton.textContent = 'Look up race';
+      }
     }
   });
 
