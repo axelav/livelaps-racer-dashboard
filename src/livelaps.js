@@ -79,10 +79,10 @@ export async function fetchRace(raceId) {
 export async function fetchAllResults(raceId) {
   let page = 1;
   let all = [];
-  while (true) {
+  while (page <= 500) {
     const json = await apiGet(`race/results/${raceId}?page=${page}&size=1000`);
     all = all.concat(json.data);
-    if (!json.has_more_pages) break;
+    if (!json.has_more_pages || all.length >= json.total) break;
     page += 1;
   }
   return all;
@@ -114,7 +114,10 @@ export async function resolveAndLoadRace(input) {
   let raceId = parsed.id;
   if (parsed.isEvent) {
     const races = await fetchEventRaces(parsed.id);
-    if (races.length !== 1) {
+    if (races.length === 0) {
+      throw new MultiRaceEventError('This event has no races yet.');
+    }
+    if (races.length > 1) {
       throw new MultiRaceEventError(
         "This event has multiple races — paste the link for the specific race's results instead."
       );
