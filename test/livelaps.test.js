@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { parseRaceId, parseDuration, formatDuration } from '../src/livelaps.js';
+import { parseRaceId, parseDuration, formatDuration, deriveTotals, deriveSectionSeries } from '../src/livelaps.js';
+import { AXEL_ENTRY, RESULTS_FIXTURE } from './fixtures/results.fixture.js';
 
 describe('parseRaceId', () => {
   it('accepts a bare race ID', () => {
@@ -81,5 +82,41 @@ describe('formatDuration', () => {
 
   it('formats an hour-plus duration with an hours segment', () => {
     expect(formatDuration(3725)).toBe('1:02:05');
+  });
+});
+
+describe('deriveTotals', () => {
+  it('finds the racer and computes field/class size from the full results array', () => {
+    expect(deriveTotals(RESULTS_FIXTURE, 4758874)).toEqual({
+      racer: AXEL_ENTRY,
+      fieldSize: 5,
+      classSize: 3
+    });
+  });
+
+  it('returns null when the participant id is not in this race', () => {
+    expect(deriveTotals(RESULTS_FIXTURE, 999999)).toBeNull();
+  });
+});
+
+describe('deriveSectionSeries', () => {
+  it('maps every section field into a parallel array, matching the known-good artifact values', () => {
+    expect(deriveSectionSeries(AXEL_ENTRY)).toEqual({
+      names: ['Section 1', 'Section 2', 'Section 3', 'Section 4', 'Section 5', 'Section 6'],
+      cumTimes: [
+        '00:22:36.309',
+        '00:48:52.458',
+        '01:03:50.018',
+        '01:16:58.394',
+        '01:45:54.475',
+        '02:26:53.649'
+      ],
+      cumulativeOverallPositions: [237, 242, 240, 253, 239, 164],
+      cumulativeClassPositions: [14, 13, 13, 13, 13, 13],
+      sectionOnlyOverallRanks: [237, 245, 257, 329, 264, 200],
+      sectionOnlyClassRanks: [14, 13, 15, 15, 13, 13],
+      avgSpeeds: [15.929, 15.99, 16.054, 18.274, 15.553, 14.64],
+      gapAheadSeconds: [2.349, 1.172, 5.768, 1.116, 23.151, 19.514]
+    });
   });
 });

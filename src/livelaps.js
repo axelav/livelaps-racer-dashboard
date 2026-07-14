@@ -35,3 +35,24 @@ export function formatDuration(totalSeconds) {
   const pad = (n) => String(n).padStart(2, '0');
   return hours > 0 ? `${hours}:${pad(minutes)}:${pad(seconds)}` : `${minutes}:${pad(seconds)}`;
 }
+
+export function deriveTotals(allResults, participantId) {
+  const racer = allResults.find((r) => r.id === participantId);
+  if (!racer) return null;
+  const classSize = allResults.filter((r) => r.className === racer.className).length;
+  return { racer, fieldSize: allResults.length, classSize };
+}
+
+export function deriveSectionSeries(racer) {
+  const sections = racer.sections;
+  return {
+    names: sections.map((s) => s.sectionName),
+    cumTimes: sections.map((s) => s.totalCumulatedTime),
+    cumulativeOverallPositions: sections.map((s) => s.overallPosition),
+    cumulativeClassPositions: sections.map((s) => s.classPosition),
+    sectionOnlyOverallRanks: sections.map((s) => s.sectionOverallPosition),
+    sectionOnlyClassRanks: sections.map((s) => s.sectionClassPosition),
+    avgSpeeds: sections.map((s) => parseFloat(s.avgSpeed)),
+    gapAheadSeconds: sections.map((s) => parseDuration(s.overallBehindBy))
+  };
+}
