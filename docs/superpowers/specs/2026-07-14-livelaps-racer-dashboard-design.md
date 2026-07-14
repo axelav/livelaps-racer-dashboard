@@ -10,8 +10,12 @@ tool that works for any racer in any section-based LiveLaps race.
 
 ## Non-goals (v1)
 
-- Race formats without a `sections` array on results entries (motocross, hare
-  scrambles, etc.) — out of scope, see Error handling.
+- Non-enduro race formats (motocross, hare scrambles, etc.) — out of scope,
+  see Error handling. Detection is by `RACE_MODE_NAME` (see API reference),
+  **not** by checking for a `sections` array: confirmed live that hare-scramble
+  races also carry a `sections` array on each entry (named `"Lap 1"`, `"Lap
+  2"`, ... instead of `"Section 1"`), so that check alone would silently let
+  the wrong format through and render broken/misleading charts.
 - Any backend/server component — the LiveLaps API's CORS policy allows direct
   browser calls (`Access-Control-Allow-Origin` reflects any origin), so this is
   a pure static site.
@@ -35,6 +39,19 @@ an ID directly — the user pastes anything identifying the **race** (a LiveLaps
 URL or a bare numeric ID), and then finds themselves via a type-ahead search
 over that race's participant list (by name or bib), which resolves to the
 unambiguous internal ID under the hood.
+
+**Event IDs are a different ID space than race IDs.** Confirmed live against
+the API: an `eventScores/{id}` URL (e.g.
+`livelaps.com/livelaps/eventScores/23827`) carries an **Event ID**, not a race
+ID — calling `race/23827` directly returns a completely unrelated race (a 2022
+Red Bull Outliers heat, not the 2026 enduro the event ID came from). Race IDs
+and event IDs are both small integers with overlapping ranges, so this fails
+silently rather than 404ing. The correct resolution is a second lookup:
+`race/event/{eventId}` returns `{success, message: [{id, raceName, mode, ...}]}`
+— an array of the race(s) under that event. When the array has exactly one
+entry, use its `id` as the race ID transparently. When it has more than one
+(an event with multiple heats/classes run as separate races), v1 shows an
+inline error rather than building a race picker — see Error handling.
 
 ## Architecture
 
@@ -61,22 +78,55 @@ calls `history.pushState` to `?race={raceId}&id={participantId}` — no full pag
 reload. A direct visit to a URL with both params skips straight to fetching
 that race and rendering the matching racer.
 
+## API reference
+
+Confirmed live against the production API — base URL:
+`https://www.livelaps.com/laravel/public/api/v1/livelaps/`
+
+- `race/{raceId}` → `{success, message: {Event_Name, Race_Name, Event_ID,
+  Race_Mode, RACE_MODE_NAME, countSections, ...}}`. `RACE_MODE_NAME` is the
+  format-support signal: confirmed `"Enduro"` for section-based races and
+  `"Laps / Hare Scramble / Cross Country"` for lap-based ones — an exact match
+  against `"Enduro"` is the v1 support check (see Non-goals).
+- `race/results/{raceId}?page={n}&size={n}` → `{current_page, total,
+  has_more_pages, data: [...]}`. Each entry: `id`, `fullName`,
+  `displayedNumber`, `className`, `overallPosition`, `classPosition`,
+  `avgSpeedTotal` (number, mph), `overallBehindByLeader`, `classBehindByLeader`
+  (time strings, final-standing gaps), `sections: [...]`. Each section entry:
+  `sectionName`, `totalCumulatedTime` (cumulative time string),
+  `overallPosition` / `classPosition` (cumulative rank after this section),
+  `sectionOverallPosition` / `sectionClassPosition` (that section's rank in
+  isolation), `avgSpeed` (**string**, needs `parseFloat`), `overallBehindBy`
+  (time string — gap to the rider immediately ahead, cumulative, after this
+  section; this is the field for the "gap to rider ahead" chart, distinct from
+  `overallBehindByLeader`).
+- `race/filters/{raceId}` → `{participants: [{value: <id>, text: "Full Name -
+  BibNumber"}]}`.
+- `race/event/{eventId}` → `{success, message: [{id, raceName, mode, ...}]}`,
+  the race(s) under an event — used only to resolve `eventScores/{id}` input,
+  see Identifier design.
+
 ## Data flow
 
 1. User pastes a LiveLaps URL or bare race ID. `parseRaceId()` regexes the
-   numeric race ID out of any of the known URL shapes (`race/results/`,
+   numeric ID out of any of the known URL shapes (`race/results/`,
    `race/filters/`, `race/config/`, `race/`, `eventScores/`) or accepts a bare
-   number.
-2. Fetch `race/{id}` (race name, mode) and `race/results/{id}` **once, fully
+   number, and separately tags whether the shape matched was `eventScores`.
+2. If the match was `eventScores`, resolve it first: fetch
+   `race/event/{eventId}`. If `message.length !== 1`, stop with the
+   multi-race error (see Error handling). Otherwise use `message[0].id` as the
+   race ID for every step below. Any other matched shape's numeric ID is
+   already a race ID and skips this step.
+3. Fetch `race/{id}` (race name, mode) and `race/results/{id}` **once, fully
    paginated** (`size=1000`, looping while `has_more_pages`) — this single
    fetch is the source of truth for both the type-ahead list (built from
    `fullName` + `displayedNumber` + `id` on every entry) and the derived totals
    (field size = `total`; class size = count of entries sharing the selected
    racer's `className`).
-3. User picks a racer from the type-ahead results. No second network call is
+4. User picks a racer from the type-ahead results. No second network call is
    needed — the matching entry (including its `sections` array) is already in
    the fetched payload.
-4. `history.pushState` to `?race={id}&id={participantId}`; render the
+5. `history.pushState` to `?race={id}&id={participantId}`; render the
    dashboard from that entry.
 
 This was chosen over the more surgical `race/results/{id}?participant={id}`
@@ -108,11 +158,14 @@ of a hardcoded object:
   pasting a LiveLaps race/results/event URL, or just the number."
 - **Race fetch fails** (404/network/non-JSON): inline error with a retry
   button; no raw API/stack output shown to the user.
-- **Race has no `sections`** on its entries: "This race format isn't supported
-  yet — Racer Breakdown currently works with section-based (enduro) races."
-  instead of attempting to render broken charts.
+- **Race's `RACE_MODE_NAME` isn't `"Enduro"`**: "This race format isn't
+  supported yet — Racer Breakdown currently works with section-based (enduro)
+  races." instead of attempting to render broken charts.
 - **No participants match the search text**: "No one matches '<query>' in this
   race."
+- **`eventScores` link covers more than one race**: "This event has multiple
+  races — paste the link for the specific race's results instead." (no
+  race-picker in v1; see Identifier design.)
 - **Deep link with a race/id pair that doesn't resolve** (bad race ID, or that
   participant isn't in this race): falls back to the search screen (for that
   race, or blank if the race fetch itself failed) with a small dismissible
