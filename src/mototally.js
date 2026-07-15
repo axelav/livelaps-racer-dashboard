@@ -92,7 +92,7 @@ export function parseResults(doc) {
       id: Number(cells[1].textContent.trim()),
       fullName: cells[3].textContent.trim(),
       displayedNumber: cells[2].textContent.trim(),
-      brand: cells[6].textContent.trim(),
+      brand: (cells[6].querySelector('span')?.textContent ?? cells[6].textContent).replace(/<.*$/s, '').trim(),
       className: cells[7].textContent.trim(),
       overallPosition: Number(cells[0].textContent.trim()),
       totalTimeSeconds: parseClock(cells[cells.length - 1].textContent),

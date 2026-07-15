@@ -35,6 +35,7 @@ describe('parseResults', () => {
       { seconds: 180, publishedPlace: 1 }
     ]);
     expect(rows[1].sectionTimes.map((s) => s.seconds)).toEqual([60, 300]);
+    expect(rows.map((r) => r.brand)).toEqual(['BET', 'KTM', 'GAS']);
   });
 });
 
