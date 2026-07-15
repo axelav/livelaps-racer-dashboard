@@ -262,26 +262,13 @@ h1 {
   outline: none;
 }
 
-details.table-toggle {
-  margin-top: 20px;
+.table-section {
+  margin-top: 24px;
 }
-details.table-toggle > summary {
-  cursor: pointer;
-  font-size: 13px;
-  color: var(--text-secondary);
-  font-weight: 600;
-  padding: 10px 2px;
-  list-style: none;
-}
-details.table-toggle > summary::-webkit-details-marker {
-  display: none;
-}
-details.table-toggle > summary::before {
-  content: '▸ ';
-  color: var(--text-muted);
-}
-details.table-toggle[open] > summary::before {
-  content: '▾ ';
+.table-heading {
+  font-size: 15px;
+  font-weight: 650;
+  margin: 0 0 8px;
 }
 table.data-table {
   width: 100%;

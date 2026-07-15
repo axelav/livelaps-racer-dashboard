@@ -67,8 +67,8 @@ const TEMPLATE = `
         </div>
       </div>
 
-      <details class="table-toggle">
-        <summary>View section-by-section data as a table</summary>
+      <section class="table-section">
+        <h2 class="table-heading">Section-by-section data</h2>
         <table class="data-table" data-slot="table">
           <thead>
             <tr>
@@ -84,7 +84,7 @@ const TEMPLATE = `
           </thead>
           <tbody data-slot="tableBody"></tbody>
         </table>
-      </details>
+      </section>
     </div>
   </div>
 `;
