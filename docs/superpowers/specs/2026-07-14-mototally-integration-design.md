@@ -154,15 +154,26 @@ object, feature-detected by the dashboard — never omitted).
 | `overallPosition` | `EventPlace` on the resolved `O`-page |
 | `classPosition` | **derived**: rank among same-`className` entries by `TotalTime` |
 | `overallBehindByLeader` / `classBehindByLeader` | **derived**: this racer's `TotalTime` minus the overall/class leader's, emitted as an `H:MM:SS` string (see Time-format contract) |
-| `avgSpeedTotal` | **`null`** — Moto-Tally is penalty/time-card scoring; no speed exists |
-| `sections[]` | one entry per check column with a nonzero value (checks reading `0` are untimed regular checkpoints; verified that summing the nonzero checks equals `TotalTime` exactly). `totalCumulatedTime` = running sum as `H:MM:SS`; `sectionOverallPosition` from the check's `(place)` annotation |
-| `sections[].overallBehindBy` | **derived**: gap to the immediately-ahead racer's cumulative time at that section (arithmetic over already-parsed per-check cumulatives), as `H:MM:SS` |
-| `sections[].avgSpeed`, `sections[].classPosition`, `sections[].sectionClassPosition` | **`null`** — no per-check speed or class standings are published; inferring them would assume a methodology Moto-Tally doesn't confirm |
+| `avgSpeedTotal` | **`null`** — Moto-Tally is penalty/time-card scoring; there is no distance/speed data anywhere on the page to derive from |
+| `sections[]` | one entry per **timed** check column (checks reading `0` are untimed regular checkpoints; verified summing the nonzero checks equals `TotalTime` exactly, and that the timed-check columns are the same for every racer, so cross-racer per-section comparison is well-defined). `totalCumulatedTime` = running sum as `H:MM:SS` |
+| `sections[].sectionOverallPosition` | the check cell's published `(place)` annotation (Moto-Tally's own section-only overall rank) |
+| `sections[].overallPosition` / `classPosition` | **derived** (cumulative): at each timed section, rank the whole parsed field / same-`className` subset by cumulative elapsed time through that section. This is how enduro standing is defined, not an assumed methodology; consistency-checkable because the final section's derived ranks must equal `EventPlace` / the final `classPosition`. |
+| `sections[].sectionClassPosition` | **derived**: rank same-`className` riders by that section's time alone |
+| `sections[].overallBehindBy` | **derived**: gap to the immediately-ahead racer in the cumulative overall ranking at that section, as `H:MM:SS` |
 
-The rule for derived-vs-null: race-final totals (`TotalTime`, `EventPlace`) are
-authoritative published numbers, so ranking/differencing them is safe;
-per-check standings beyond the published overall `(place)` are not published, so
-nothing is invented.
+**Derive-full decision:** because the page publishes every racer's per-section
+times, the app computes the full cumulative standings (overall and class) rather
+than leaving them blank — ranking riders by elapsed time is the definition of
+enduro standing, not invented data, and it lights up the whole dashboard.
+Average speed is the sole exception: no speed data exists on the page at all, so
+it stays `null` and is the only feature-detected omission.
+
+**DNF handling:** a racer who did not complete every timed check has no
+cumulative time past their last completed one. Such a racer is ranked only
+through the sections they completed; from their first missing timed check
+onward their per-section standings are `null` (they drop out of the ranking at
+that section rather than being ranked as if they finished instantly). Their
+completed sections still count toward everyone else's ranks.
 
 ### Time-format contract (correctness detail)
 
@@ -176,27 +187,30 @@ part of the record-shape contract, not just field names.
 
 ## Feature detection in the dashboard (correctness detail)
 
-The dashboard currently calls `racer.avgSpeedTotal.toFixed(1)` and
-`deriveSectionSeries` calls `parseFloat(s.avgSpeed)` **unconditionally** — with a
-`null` value these throw / produce `NaN`. So "hide when absent" must be an
-explicit **guard before the call**, not merely conditional display:
+Since the derive-full decision populates every per-section standing, **average
+speed is the only feature-detected omission.** The dashboard currently calls
+`racer.avgSpeedTotal.toFixed(1)` and reads `series.avgSpeeds[i].toFixed(3)`
+**unconditionally** — with a `null`/`NaN` value these throw or print `"NaN"`. So
+the guard must come **before the call**, keyed on `racer.avgSpeedTotal != null`
+(the single "does this source have speed?" signal), never on source identity:
 
-- Average-speed stat tile: render only when `racer.avgSpeedTotal != null`.
-- Average-speed-per-section bar chart: render only when the section speeds are
-  present.
-- Class-position-per-section line chart: render only when per-section class
-  positions are present.
+- Average-speed stat tile: render only when `racer.avgSpeedTotal != null`; else
+  remove the tile node (leaving a 3-tile row).
+- "Pace by section" average-speed bar chart card: render only when
+  `racer.avgSpeedTotal != null`; else remove the card.
+- Table avg-speed cell: print `'—'` when the value is not finite.
 
-`deriveSectionSeries` (in `livelaps.js`) is extended to tolerate `null` section
-fields by producing `null` series arrays the dashboard can test, rather than
-`NaN`-filled arrays. Everything else (overall-position chart, cumulative time,
-gap-to-leader, table view) is unchanged and shared.
+All other charts (overall/class through the race, cumulative-vs-section-rank,
+gap to rider ahead), the cumulative-time column, and the gap-to-leader tiles are
+populated by the derived standings and render unchanged for both sources.
+`deriveSectionSeries` in `livelaps.js` is left **unchanged** — the Moto-Tally
+records feed it the same field names it already reads.
 
 ## UI changes
 
 - `search.js`: subhead/placeholder text becomes source-agnostic ("Paste a
   LiveLaps or Moto-Tally results link…").
-- `dashboard.js`: the three feature-detected renders above. No source
+- `dashboard.js`: the three speed-only feature-detected guards above. No source
   conditionals.
 
 ## Error handling
