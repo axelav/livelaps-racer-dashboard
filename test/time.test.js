@@ -9,6 +9,9 @@ describe('parseClock', () => {
     expect(parseClock('')).toBeNull();
     expect(parseClock(' ')).toBeNull();
   });
+  it('normalizes a leading non-breaking space (scraped &nbsp;)', () => {
+    expect(parseClock("\u00A0" + "27:35")).toBe(1655);
+  });
 });
 
 describe('formatHMS', () => {
