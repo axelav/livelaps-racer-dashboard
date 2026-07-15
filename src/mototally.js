@@ -198,3 +198,59 @@ export function deriveStandings(rawRecords) {
     };
   });
 }
+
+export const PROXY_PREFIX = '/proxy/mototally/';
+
+function buildPath({ org, discipline, year, round, group }, view = 'CS') {
+  return `${org}/${discipline}/Results.aspx/${year}/${round}/${group}/${view}`;
+}
+
+async function fetchDoc(path) {
+  const response = await fetch(PROXY_PREFIX + path);
+  if (!response.ok) throw new Error(`Moto-Tally proxy request failed: ${response.status} ${path}`);
+  const html = await response.text();
+  return new DOMParser().parseFromString(html, 'text/html');
+}
+
+function descriptorToRaceId({ org, discipline, year, round, group }) {
+  return `mototally:${org}/${discipline}/${year}/${round}/${group}`;
+}
+
+function raceIdToDescriptor(raceId) {
+  const [, path] = raceId.split('mototally:');
+  const [org, discipline, year, round, group] = path.split('/');
+  return { org, discipline, year, round, group };
+}
+
+async function resolveClassToOverall(descriptor) {
+  const classDoc = await fetchDoc(buildPath(descriptor));
+  const classAmas = parseAmaSet(classDoc);
+  const overallGroups = parseOverallOptions(classDoc);
+  const summaries = await Promise.all(
+    overallGroups.map(async (group) => ({
+      group,
+      amaSet: parseAmaSet(await fetchDoc(buildPath({ ...descriptor, group })))
+    }))
+  );
+  const picked = pickContainingGroup(summaries, classAmas);
+  return picked ? { ...descriptor, group: picked.group } : descriptor;
+}
+
+async function loadOverall(descriptor) {
+  const doc = await fetchDoc(buildPath(descriptor));
+  return {
+    raceId: descriptorToRaceId(descriptor),
+    raceMeta: { raceName: parseRaceName(doc), modeName: 'Enduro' },
+    allResults: deriveStandings(parseResults(doc))
+  };
+}
+
+export async function resolveAndLoadRace(input) {
+  const descriptor = parseMotoTallyUrl(input);
+  const overall = descriptor.group.startsWith('O') ? descriptor : await resolveClassToOverall(descriptor);
+  return loadOverall(overall);
+}
+
+export async function loadRaceById(raceId) {
+  return loadOverall(raceIdToDescriptor(raceId));
+}
