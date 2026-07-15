@@ -150,13 +150,17 @@ export function renderDashboard(container, { raceMeta, racer, fieldSize, classSi
   slot('statGapLeader').textContent = formatDuration(parseDuration(racer.overallBehindByLeader));
   slot('statGapLeaderSub').textContent = `behind class leader by ${formatDuration(parseDuration(racer.classBehindByLeader))}`;
 
-  const statSpeed = slot('statSpeed');
-  statSpeed.innerHTML = '';
-  statSpeed.append(`${racer.avgSpeedTotal.toFixed(1)} `);
-  const speedSmall = document.createElement('small');
-  speedSmall.textContent = 'mph';
-  statSpeed.appendChild(speedSmall);
-  slot('statSpeedSub').textContent = `across all ${sectionCount} sections`;
+  if (racer.avgSpeedTotal != null) {
+    const statSpeed = slot('statSpeed');
+    statSpeed.innerHTML = '';
+    statSpeed.append(`${racer.avgSpeedTotal.toFixed(1)} `);
+    const speedSmall = document.createElement('small');
+    speedSmall.textContent = 'mph';
+    statSpeed.appendChild(speedSmall);
+    slot('statSpeedSub').textContent = `across all ${sectionCount} sections`;
+  } else {
+    slot('statSpeed').closest('.stat-tile').remove();
+  }
 
   slot('overallCardSub').textContent = `Cumulative position among all ${fieldSize} finishers, after each section`;
   slot('classCardSub').textContent = `Cumulative position within ${racer.className} (${classSize} riders), after each section`;
@@ -194,14 +198,18 @@ export function renderDashboard(container, { raceMeta, racer, fieldSize, classSi
     ]
   });
 
-  barChart(slot('chartSpeed'), {
-    ariaLabel: 'Average speed by section',
-    labels: series.names,
-    values: series.avgSpeeds,
-    color: colorSpeed,
-    label: 'Avg speed',
-    format: (v) => v.toFixed(1)
-  });
+  if (racer.avgSpeedTotal != null) {
+    barChart(slot('chartSpeed'), {
+      ariaLabel: 'Average speed by section',
+      labels: series.names,
+      values: series.avgSpeeds,
+      color: colorSpeed,
+      label: 'Avg speed',
+      format: (v) => v.toFixed(1)
+    });
+  } else {
+    slot('chartSpeed').closest('.card').remove();
+  }
 
   barChart(slot('chartGap'), {
     ariaLabel: 'Gap to the rider ahead by section',
@@ -222,7 +230,7 @@ export function renderDashboard(container, { raceMeta, racer, fieldSize, classSi
       series.cumulativeClassPositions[i],
       series.sectionOnlyOverallRanks[i],
       series.sectionOnlyClassRanks[i],
-      series.avgSpeeds[i].toFixed(3),
+      Number.isFinite(series.avgSpeeds[i]) ? series.avgSpeeds[i].toFixed(3) : '—',
       series.gapAheadSeconds[i].toFixed(3)
     ].forEach((val) => {
       const td = document.createElement('td');
