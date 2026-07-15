@@ -3,7 +3,7 @@ import {
   UnparseableInputError,
   MultiRaceEventError,
   UnsupportedFormatError
-} from './livelaps.js';
+} from './raceSource.js';
 
 const TEMPLATE = `
   <div class="viz-root">
@@ -11,7 +11,7 @@ const TEMPLATE = `
       <div class="masthead">
         <p class="eyebrow">Racer Breakdown</p>
         <h1>Find your race result</h1>
-        <p class="subhead">Paste a LiveLaps race link (results, filters, or event page) or a bare race ID.</p>
+        <p class="subhead">Paste a LiveLaps or Moto-Tally results link, or a bare LiveLaps race ID.</p>
       </div>
 
       <div class="notice" data-slot="notice" role="alert" hidden>
@@ -20,7 +20,7 @@ const TEMPLATE = `
       </div>
 
       <form data-slot="raceForm" class="race-form">
-        <input type="text" data-slot="raceInput" placeholder="https://www.livelaps.com/... or 79103" autocomplete="off" />
+        <input type="text" data-slot="raceInput" placeholder="LiveLaps or Moto-Tally link, or 79103" autocomplete="off" />
         <button type="submit">Look up race</button>
       </form>
 

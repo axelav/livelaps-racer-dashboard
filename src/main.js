@@ -1,5 +1,5 @@
 import './style.css';
-import { loadRaceById, deriveTotals, UnsupportedFormatError } from './livelaps.js';
+import { loadRaceById, deriveTotals, UnsupportedFormatError } from './raceSource.js';
 import { renderSearch } from './search.js';
 import { renderDashboard } from './dashboard.js';
 
