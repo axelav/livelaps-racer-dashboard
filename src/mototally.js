@@ -64,6 +64,14 @@ export function parseAmaSet(doc) {
   return new Set(dataRows(doc).map((tr) => cellsOf(tr)[1].textContent.trim()));
 }
 
+export function pickContainingGroup(summaries, classAmaSet) {
+  const containing = summaries.filter((s) =>
+    [...classAmaSet].every((ama) => s.amaSet.has(ama))
+  );
+  if (containing.length === 0) return null;
+  return containing.reduce((best, s) => (s.amaSet.size > best.amaSet.size ? s : best));
+}
+
 export function parseResults(doc) {
   const rows = dataRows(doc);
   if (rows.length === 0) return [];

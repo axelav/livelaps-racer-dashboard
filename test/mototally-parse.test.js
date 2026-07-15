@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { MOTOTALLY_FIXTURE_HTML, docFromHtml } from './fixtures/mototally.fixture.js';
-import { parseResults, parseRaceName, parseAmaSet, parseOverallOptions } from '../src/mototally.js';
+import { parseResults, parseRaceName, parseAmaSet, parseOverallOptions, pickContainingGroup } from '../src/mototally.js';
 
 let doc;
 beforeAll(async () => { doc = await docFromHtml(MOTOTALLY_FIXTURE_HTML); });
@@ -35,5 +35,20 @@ describe('parseResults', () => {
       { seconds: 180, publishedPlace: 1 }
     ]);
     expect(rows[1].sectionTimes.map((s) => s.seconds)).toEqual([60, 300]);
+  });
+});
+
+describe('pickContainingGroup', () => {
+  const classAmas = new Set(['111', '222']);
+  it('picks the largest overall page that contains all class riders', () => {
+    const summaries = [
+      { group: 'O1', amaSet: new Set(['111', '222', '333', '444']) }, // biggest, contains
+      { group: 'O2', amaSet: new Set(['111', '222', '333']) },        // contains, smaller
+      { group: 'O5', amaSet: new Set(['555', '666']) }                // does not contain
+    ];
+    expect(pickContainingGroup(summaries, classAmas)?.group).toBe('O1');
+  });
+  it('returns null when no overall page contains the class', () => {
+    expect(pickContainingGroup([{ group: 'O5', amaSet: new Set(['999']) }], classAmas)).toBeNull();
   });
 });
