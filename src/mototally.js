@@ -1,5 +1,5 @@
 import { UnsupportedFormatError, UnparseableInputError } from './livelaps.js';
-import { parseClock } from './time.js';
+import { parseClock, formatHMS } from './time.js';
 
 const URL_PATTERN =
   /moto-tally\.com\/([^/]+)\/([^/]+)\/Results\.aspx\/(\d+)\/(\d+)\/([OC]\d+)\/([A-Za-z]+)/i;
@@ -97,6 +97,104 @@ export function parseResults(doc) {
       overallPosition: Number(cells[0].textContent.trim()),
       totalTimeSeconds: parseClock(cells[cells.length - 1].textContent),
       sectionTimes
+    };
+  });
+}
+
+export function deriveStandings(rawRecords) {
+  const n = rawRecords.length;
+  const sectionCount = rawRecords[0]?.sectionTimes.length ?? 0;
+
+  // cumulative seconds per racer per section; null from the first missing section on (DNF).
+  const cum = rawRecords.map((r) => {
+    const out = [];
+    let acc = 0;
+    let dead = false;
+    for (let i = 0; i < sectionCount; i++) {
+      const st = r.sectionTimes[i];
+      if (dead || st == null || st.seconds == null) {
+        dead = true;
+        out.push(null);
+      } else {
+        acc += st.seconds;
+        out.push(acc);
+      }
+    }
+    return out;
+  });
+
+  const cumulativePosition = (si, ri, sameClass) => {
+    const me = cum[ri][si];
+    if (me == null) return null;
+    let pos = 1;
+    for (let j = 0; j < n; j++) {
+      if (j === ri) continue;
+      if (sameClass && rawRecords[j].className !== rawRecords[ri].className) continue;
+      const v = cum[j][si];
+      if (v != null && v < me) pos++;
+    }
+    return pos;
+  };
+
+  const gapAhead = (si, ri) => {
+    const me = cum[ri][si];
+    if (me == null) return null;
+    let bestAhead = null;
+    for (let j = 0; j < n; j++) {
+      if (j === ri) continue;
+      const v = cum[j][si];
+      if (v != null && v < me && (bestAhead == null || v > bestAhead)) bestAhead = v;
+    }
+    return bestAhead == null ? 0 : me - bestAhead;
+  };
+
+  const sectionClassRank = (si, ri) => {
+    const st = rawRecords[ri].sectionTimes[si];
+    if (st == null || st.seconds == null) return null;
+    let pos = 1;
+    for (let j = 0; j < n; j++) {
+      if (j === ri) continue;
+      if (rawRecords[j].className !== rawRecords[ri].className) continue;
+      const o = rawRecords[j].sectionTimes[si];
+      if (o != null && o.seconds != null && o.seconds < st.seconds) pos++;
+    }
+    return pos;
+  };
+
+  const totals = rawRecords.map((r) => r.totalTimeSeconds).filter((v) => v != null);
+  const overallLeaderTotal = totals.length ? Math.min(...totals) : 0;
+
+  return rawRecords.map((r, ri) => {
+    const classMates = rawRecords.filter((x) => x.className === r.className && x.totalTimeSeconds != null);
+    const classLeaderTotal = classMates.length ? Math.min(...classMates.map((x) => x.totalTimeSeconds)) : 0;
+    const classPosition = 1 + classMates.filter((x) => x.totalTimeSeconds < r.totalTimeSeconds).length;
+
+    const sections = r.sectionTimes.map((st, si) => {
+      const gap = gapAhead(si, ri);
+      return {
+        sectionName: `Test ${si + 1}`,
+        totalCumulatedTime: cum[ri][si] == null ? null : formatHMS(cum[ri][si]),
+        overallPosition: cumulativePosition(si, ri, false),
+        classPosition: cumulativePosition(si, ri, true),
+        sectionOverallPosition: st?.publishedPlace ?? null,
+        sectionClassPosition: sectionClassRank(si, ri),
+        avgSpeed: null,
+        overallBehindBy: gap == null ? null : formatHMS(gap)
+      };
+    });
+
+    return {
+      id: r.id,
+      fullName: r.fullName,
+      displayedNumber: r.displayedNumber,
+      brand: r.brand,
+      className: r.className,
+      overallPosition: r.overallPosition,
+      classPosition,
+      avgSpeedTotal: null,
+      overallBehindByLeader: r.totalTimeSeconds == null ? null : formatHMS(r.totalTimeSeconds - overallLeaderTotal),
+      classBehindByLeader: r.totalTimeSeconds == null ? null : formatHMS(r.totalTimeSeconds - classLeaderTotal),
+      sections
     };
   });
 }
