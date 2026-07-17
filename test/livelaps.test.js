@@ -17,6 +17,13 @@ describe('parseRaceId', () => {
     ).toEqual({ id: 79103, isEvent: false });
   });
 
+  it('parses a legacy dashboard race path', () => {
+    expect(parseRaceId('https://enduro.honkytonk.in/race/results/79103?view=full')).toEqual({
+      id: 79103,
+      isEvent: false
+    });
+  });
+
   it('parses a race/filters/ URL', () => {
     expect(
       parseRaceId('https://www.livelaps.com/laravel/public/api/v1/livelaps/race/filters/79103')

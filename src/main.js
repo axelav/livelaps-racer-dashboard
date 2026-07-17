@@ -1,5 +1,11 @@
 import './style.css';
-import { loadRaceById, deriveTotals, UnsupportedFormatError } from './raceSource.js';
+import {
+  loadRaceById,
+  resolveAndLoadRace,
+  deriveTotals,
+  parseRaceId,
+  UnsupportedFormatError
+} from './raceSource.js';
 import { renderSearch } from './search.js';
 import { renderDashboard } from './dashboard.js';
 
@@ -53,10 +59,29 @@ async function showDashboard(raceId, participantId, loadedRace) {
   }
 }
 
+async function showRaceSearch(input) {
+  const thisRequest = ++requestId;
+  try {
+    const race = await resolveAndLoadRace(input);
+    if (thisRequest !== requestId) return;
+    activeRace = race;
+    history.replaceState({}, '', `?race=${encodeURIComponent(race.raceId)}`);
+    showSearch({ race });
+  } catch (err) {
+    if (thisRequest !== requestId) return;
+    console.error(err);
+    showSearch({ notice: "Couldn't load that race — check the link and try again." });
+  }
+}
+
 function route() {
   const { raceId, participantId } = currentParams();
   if (raceId && participantId) {
     showDashboard(raceId, participantId);
+  } else if (raceId) {
+    showRaceSearch(raceId);
+  } else if (parseRaceId(window.location.pathname)) {
+    showRaceSearch(window.location.href);
   } else {
     showSearch({ race: activeRace });
   }

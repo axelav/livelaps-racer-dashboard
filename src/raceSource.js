@@ -3,6 +3,7 @@ import * as mototally from './mototally.js';
 
 export {
   deriveTotals,
+  parseRaceId,
   UnparseableInputError,
   MultiRaceEventError,
   UnsupportedFormatError
