@@ -5,6 +5,7 @@ import { renderDashboard } from './dashboard.js';
 
 const app = document.getElementById('app');
 let requestId = 0;
+let activeRace = null;
 
 function currentParams() {
   const params = new URLSearchParams(window.location.search);
@@ -14,23 +15,27 @@ function currentParams() {
 function showSearch(options = {}) {
   renderSearch(app, {
     ...options,
-    onSelect(raceId, participantId) {
+    onSelect(raceId, participantId, race) {
+      activeRace = race;
       history.pushState({}, '', `?race=${raceId}&id=${participantId}`);
-      showDashboard(raceId, participantId);
+      showDashboard(raceId, participantId, race);
     }
   });
 }
 
 function showSearchDefault() {
   history.pushState({}, '', window.location.pathname);
-  showSearch();
+  showSearch({ race: activeRace });
 }
 
-async function showDashboard(raceId, participantId) {
+async function showDashboard(raceId, participantId, loadedRace) {
   const thisRequest = ++requestId;
   try {
-    const { raceMeta, allResults } = await loadRaceById(raceId);
+    const race =
+      loadedRace && String(loadedRace.raceId) === String(raceId) ? loadedRace : await loadRaceById(raceId);
+    const { raceMeta, allResults } = race;
     if (thisRequest !== requestId) return;
+    activeRace = { raceId, raceMeta, allResults };
     const totals = deriveTotals(allResults, Number(participantId));
     if (!totals) {
       history.replaceState({}, '', window.location.pathname);
@@ -53,7 +58,7 @@ function route() {
   if (raceId && participantId) {
     showDashboard(raceId, participantId);
   } else {
-    showSearch();
+    showSearch({ race: activeRace });
   }
 }
 

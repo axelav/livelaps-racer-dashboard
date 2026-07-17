@@ -320,6 +320,21 @@ table.data-table th {
   cursor: pointer;
 }
 
+.change-race {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font: inherit;
+  margin: 12px 0 0;
+  padding: 0;
+  text-decoration: underline;
+}
+
+.change-race:hover {
+  color: var(--text-primary);
+}
+
 .notice {
   display: flex;
   align-items: flex-start;
