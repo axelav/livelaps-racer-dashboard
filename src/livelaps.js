@@ -97,7 +97,7 @@ export async function loadRaceById(raceId) {
   const [raceMeta, allResults] = await Promise.all([fetchRace(raceId), fetchAllResults(raceId)]);
   if (raceMeta.modeName !== 'Enduro') {
     throw new UnsupportedFormatError(
-      "This race format isn't supported yet — Racer Breakdown currently works with section-based (enduro) races."
+      "This race format isn't supported yet — Enduro Breakdown currently works with section-based races."
     );
   }
   return { raceId, raceMeta, allResults };

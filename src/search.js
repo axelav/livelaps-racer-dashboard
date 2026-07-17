@@ -9,8 +9,8 @@ const TEMPLATE = `
   <div class="viz-root">
     <div class="wrap">
       <div class="masthead">
-        <p class="eyebrow">Racer Breakdown</p>
-        <h1>Find your race result</h1>
+        <p class="eyebrow">Enduro Breakdown</p>
+        <h1>Find your enduro result</h1>
         <p class="subhead">Paste a LiveLaps or Moto-Tally results link, or a bare LiveLaps race ID.</p>
       </div>
 

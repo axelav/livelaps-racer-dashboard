@@ -114,7 +114,7 @@ export function renderDashboard(container, { raceMeta, racer, fieldSize, classSi
   slot('back').addEventListener('click', onBack);
 
   slot('eyebrow').textContent = raceMeta.raceName;
-  slot('title').textContent = `${racer.fullName} — race breakdown`;
+  slot('title').textContent = `${racer.fullName} — enduro breakdown`;
 
   const series = deriveSectionSeries(racer);
   const sectionCount = series.names.length;

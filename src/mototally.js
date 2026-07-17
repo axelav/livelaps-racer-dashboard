@@ -18,7 +18,7 @@ export function parseMotoTallyUrl(input) {
   const [, org, discipline, year, round, group, view] = match;
   if (discipline.toLowerCase() !== 'enduro') {
     throw new UnsupportedFormatError(
-      "This race format isn't supported yet — Racer Breakdown currently works with section-based (enduro) races."
+      "This race format isn't supported yet — Enduro Breakdown currently works with section-based races."
     );
   }
   return { org, discipline, year, round, group, view };
