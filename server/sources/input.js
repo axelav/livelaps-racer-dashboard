@@ -17,11 +17,14 @@ export function canonicalizeSourceInput(input) {
   try {
     url = new URL(trimmed);
   } catch {
+    if (!/^\d+$/.test(trimmed)) unsupportedInput();
+
     const parsed = parseRaceId(trimmed);
     if (!parsed) unsupportedInput();
 
     return {
       provider: 'livelaps',
+      inputKind: 'race',
       sourceRaceId: String(parsed.id),
       canonicalUrl: `https://www.livelaps.com/livelaps/race/${parsed.id}`
     };
@@ -31,8 +34,18 @@ export function canonicalizeSourceInput(input) {
     const parsed = parseRaceId(trimmed);
     if (!parsed) unsupportedInput();
 
+    if (parsed.isEvent) {
+      return {
+        provider: 'livelaps',
+        inputKind: 'event',
+        eventId: String(parsed.id),
+        canonicalUrl: `https://www.livelaps.com/livelaps/eventScores/${parsed.id}`
+      };
+    }
+
     return {
       provider: 'livelaps',
+      inputKind: 'race',
       sourceRaceId: String(parsed.id),
       canonicalUrl: `https://www.livelaps.com/livelaps/race/${parsed.id}`
     };
@@ -44,6 +57,7 @@ export function canonicalizeSourceInput(input) {
 
     return {
       provider: 'mototally',
+      inputKind: 'race',
       sourceRaceId: `${org}/${discipline}/${year}/${round}/${group}`,
       canonicalUrl: `https://www.moto-tally.com/${org}/${discipline}/Results.aspx/${year}/${round}/${group}/${view}`,
       descriptor
