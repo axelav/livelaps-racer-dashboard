@@ -215,9 +215,11 @@ export function createArchive(db) {
                  rs.captured_at, re.*
           FROM race_entries re
           JOIN race_snapshots rs ON rs.id = re.snapshot_id
-          JOIN source_races sr ON sr.id = rs.source_race_id
+          JOIN source_races sr
+            ON sr.id = rs.source_race_id
+           AND sr.current_snapshot_id = rs.id
           WHERE re.normalized_name = ?
-          ORDER BY COALESCE(sr.event_date, rs.captured_at), rs.captured_at, re.id
+          ORDER BY sr.event_date IS NULL, sr.event_date, rs.captured_at, re.id
         `)
         .all(normalizedName)
         .map((row) => ({
@@ -226,6 +228,7 @@ export function createArchive(db) {
           providerSourceRaceId: row.source_race_id,
           raceName: row.race_name,
           eventDate: row.event_date,
+          eventDateProvenance: row.event_date ? 'source' : 'unavailable',
           capturedAt: row.captured_at,
           fullName: row.full_name,
           normalizedName: row.normalized_name,

@@ -1,5 +1,5 @@
 import express from 'express';
-import { normalizeRacerName } from './archive/history.js';
+import { buildRacerHistory, normalizeRacerName } from './archive/history.js';
 import { createRequesterId } from './requester-id.js';
 import { canonicalizeSourceInput } from './sources/input.js';
 
@@ -124,8 +124,8 @@ export function createApp({
   });
 
   app.get('/api/history/:normalizedName', (req, res) => {
-    const races = archive.findHistory(normalizeRacerName(req.params.normalizedName));
-    res.json({ racerName: races[0]?.fullName ?? null, races, trends: {} });
+    const entries = archive.findHistory(normalizeRacerName(req.params.normalizedName));
+    res.json(buildRacerHistory(entries));
   });
 
   app.use('/api', (_req, res) => {

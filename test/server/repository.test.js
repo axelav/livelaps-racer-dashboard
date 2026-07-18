@@ -1,6 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { openDatabase } from '../../server/archive/database.js';
-import { normalizeRacerName, toPercentile } from '../../server/archive/history.js';
+import {
+  buildRacerHistory,
+  normalizeRacerName,
+  toPercentile
+} from '../../server/archive/history.js';
 import { createArchive } from '../../server/archive/repository.js';
 
 const CAPTURED_AT = '2026-07-17T00:00:00.000Z';
@@ -112,7 +116,7 @@ describe('archive repository', () => {
       normalized: loaded.normalized,
       artifact: loaded.artifact
     });
-    expect(archive.findHistory(normalizeRacerName('Áxel-Anderson'))).toHaveLength(2);
+    expect(archive.findHistory(normalizeRacerName('Áxel-Anderson'))).toHaveLength(1);
     expect(db.prepare('SELECT COUNT(*) AS count FROM race_snapshots').get().count).toBe(2);
   });
 
@@ -197,12 +201,67 @@ describe('archive repository', () => {
       '2026-07-17T00:05:00.000Z'
     );
 
-    expect(archive.findHistory(normalizeRacerName('AXEL ANDERSON'))).toMatchObject([
+    const history = archive.findHistory(normalizeRacerName('AXEL ANDERSON'));
+
+    expect(history).toHaveLength(2);
+    expect(history).toMatchObject([
       { sourceRaceId: 'livelaps:79103', provider: 'livelaps', eventDate: '2026-07-12' },
       {
         sourceRaceId: 'mototally:ECEA/Enduro/2026/6/O1',
         provider: 'mototally',
         eventDate: '2026-07-12'
+      }
+    ]);
+  });
+
+  it('returns only matching current entries in event-date order', () => {
+    archive.saveSnapshot(
+      loadedRace({
+        sourceRaceId: 'first',
+        eventDate: '2026-06-10',
+        fullName: 'Retired Name',
+        artifactText: '{"snapshot":"first"}'
+      }),
+      '2026-07-17T02:00:00.000Z'
+    );
+    archive.saveSnapshot(
+      loadedRace({
+        provider: 'mototally',
+        sourceRaceId: 'ECEA/Enduro/2026/6/O1',
+        eventDate: '2026-07-12',
+        fullName: 'AXEL ANDERSON',
+        artifactText: '<html>second</html>'
+      }),
+      '2026-07-17T01:00:00.000Z'
+    );
+    archive.saveSnapshot(
+      loadedRace({
+        sourceRaceId: 'first',
+        eventDate: '2026-06-10',
+        fullName: 'Áxel-Anderson',
+        artifactText: '{"snapshot":"replacement"}'
+      }),
+      '2026-07-17T03:00:00.000Z'
+    );
+    archive.saveSnapshot(
+      loadedRace({ sourceRaceId: 'alias', fullName: 'Anderson Axel' }),
+      '2026-07-17T04:00:00.000Z'
+    );
+
+    expect(archive.findHistory(normalizeRacerName('AXEL ANDERSON'))).toMatchObject([
+      {
+        sourceRaceId: 'livelaps:first',
+        provider: 'livelaps',
+        fullName: 'Áxel-Anderson',
+        eventDate: '2026-06-10',
+        eventDateProvenance: 'source'
+      },
+      {
+        sourceRaceId: 'mototally:ECEA/Enduro/2026/6/O1',
+        provider: 'mototally',
+        fullName: 'AXEL ANDERSON',
+        eventDate: '2026-07-12',
+        eventDateProvenance: 'source'
       }
     ]);
   });
@@ -251,5 +310,41 @@ describe('history transforms', () => {
     expect(toPercentile(1, 4)).toBe(100);
     expect(toPercentile(2, 4)).toBe(75);
     expect(toPercentile(1, 0)).toBeNull();
+  });
+
+  it('builds separate provider races and percentile trends from matching entries', () => {
+    const history = buildRacerHistory([
+      {
+        sourceRaceId: 'livelaps:79103',
+        provider: 'livelaps',
+        raceName: 'June Enduro',
+        eventDate: '2026-06-01',
+        eventDateProvenance: 'source',
+        fullName: 'Áxel-Anderson',
+        overallPosition: 2,
+        fieldSize: 17,
+        classPosition: 1,
+        classSize: 4,
+        totalTimeSeconds: 960
+      },
+      {
+        sourceRaceId: 'mototally:ECEA/Enduro/2026/6/O1',
+        provider: 'mototally',
+        raceName: 'July Enduro',
+        eventDate: '2026-07-12',
+        eventDateProvenance: 'source',
+        fullName: 'AXEL ANDERSON',
+        overallPosition: 7,
+        fieldSize: 24,
+        classPosition: 2,
+        classSize: 5,
+        totalTimeSeconds: 1200
+      }
+    ]);
+
+    expect(history.racerName).toBe('Áxel-Anderson');
+    expect(history.races.map((race) => race.provider)).toEqual(['livelaps', 'mototally']);
+    expect(history.trends.overallPercentiles).toEqual([94, 75]);
+    expect(history.trends.classPercentiles).toEqual([100, 80]);
   });
 });

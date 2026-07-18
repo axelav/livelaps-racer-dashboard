@@ -311,6 +311,16 @@ describe('archive API', () => {
 
   it('returns history for the normalized racer name', async () => {
     archive.saveSnapshot(loadedRace(), '2026-07-18T11:00:00.000Z');
+    archive.saveSnapshot(
+      loadedRace({
+        provider: 'mototally',
+        sourceRaceId: 'ECEA/Enduro/2026/6/O1',
+        raceName: 'Moto-Tally Enduro',
+        eventDate: '2026-07-19',
+        fullName: 'AXEL ANDERSON'
+      }),
+      '2026-07-18T12:00:00.000Z'
+    );
 
     const response = await request(app).get(
       `/api/history/${encodeURIComponent(normalizeRacerName('AXEL ANDERSON'))}`
@@ -322,11 +332,21 @@ describe('archive API', () => {
       races: [
         {
           sourceRaceId: 'livelaps:79103',
-          normalizedName: 'axel anderson',
-          fullName: 'Áxel-Anderson'
+          provider: 'livelaps',
+          fullName: 'Áxel-Anderson',
+          overallPercentile: 50,
+          classPercentile: 100
+        },
+        {
+          sourceRaceId: 'mototally:ECEA/Enduro/2026/6/O1',
+          provider: 'mototally',
+          fullName: 'AXEL ANDERSON'
         }
       ],
-      trends: {}
+      trends: {
+        overallPercentiles: [50, 50],
+        classPercentiles: [100, 100]
+      }
     });
   });
 });
