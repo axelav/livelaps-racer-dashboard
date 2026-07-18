@@ -12,6 +12,10 @@ _Avoid_: User library, private cache
 The immutable normalized results and race metadata captured from one timing source at a particular time, together with its original source artifact. Later fetches create later snapshots rather than replacing it.
 _Avoid_: Live result, cached response
 
+**Source race**:
+A race as identified by one timing provider and that provider's race ID. Two providers' records remain distinct Source Races even when they describe the same real-world event.
+_Avoid_: Canonical event, merged race
+
 **Source artifact**:
 The unmodified API payload or source HTML from which a Race Snapshot is derived.
 _Avoid_: Raw cache, scrape output
