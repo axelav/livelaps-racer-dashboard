@@ -24,6 +24,10 @@ _Avoid_: Reload, cache invalidation
 A racer-centric comparison that groups selected Race Entries by an exact normalized name across archived races. It is a browser-local view, not a shared racer record.
 _Avoid_: Combined leaderboard, event standings
 
+**Saved selection**:
+The browser-local record of a visitor's chosen archive races and racer-history name, which can be cleared by that visitor.
+_Avoid_: Shared profile, user account
+
 **Race entry**:
 One racer's result within a Race Snapshot.
 _Avoid_: Racer, profile
