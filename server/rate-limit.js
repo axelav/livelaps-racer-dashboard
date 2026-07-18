@@ -43,27 +43,21 @@ export function createLimiter({
       if (!Number.isFinite(at)) throw new TypeError('Rate limiter clock must return milliseconds.');
       if (++checks % 100 === 0) sweepExpired(at);
 
-      const requesterBucket = currentBucket(
-        requesterBuckets,
-        requesterKey,
-        requesterPolicy,
-        at
-      );
-      const sourceRaceBucket = currentBucket(
-        sourceRaceBuckets,
-        sourceRaceKey,
-        sourceRacePolicy,
-        at
-      );
+      const requesterBucket = requesterKey
+        ? currentBucket(requesterBuckets, requesterKey, requesterPolicy, at)
+        : null;
+      const sourceRaceBucket = sourceRaceKey
+        ? currentBucket(sourceRaceBuckets, sourceRaceKey, sourceRacePolicy, at)
+        : null;
 
-      if (requesterBucket.count >= requesterPolicy.limit) {
+      if (requesterBucket?.count >= requesterPolicy.limit) {
         return {
           allowed: false,
           scope: 'requester',
           retryAfterMs: requesterBucket.resetAt - at
         };
       }
-      if (sourceRaceBucket.count >= sourceRacePolicy.limit) {
+      if (sourceRaceBucket?.count >= sourceRacePolicy.limit) {
         return {
           allowed: false,
           scope: 'source race',
@@ -71,10 +65,14 @@ export function createLimiter({
         };
       }
 
-      requesterBucket.count += 1;
-      sourceRaceBucket.count += 1;
-      requesterBuckets.set(requesterKey, requesterBucket);
-      sourceRaceBuckets.set(sourceRaceKey, sourceRaceBucket);
+      if (requesterBucket) {
+        requesterBucket.count += 1;
+        requesterBuckets.set(requesterKey, requesterBucket);
+      }
+      if (sourceRaceBucket) {
+        sourceRaceBucket.count += 1;
+        sourceRaceBuckets.set(sourceRaceKey, sourceRaceBucket);
+      }
       return { allowed: true };
     }
   };

@@ -1,5 +1,6 @@
 import express from 'express';
 import { normalizeRacerName } from './archive/history.js';
+import { createRequesterId } from './requester-id.js';
 import { canonicalizeSourceInput } from './sources/input.js';
 
 function snapshotResponse(current) {
@@ -14,17 +15,12 @@ function currentSnapshotMetadata(current) {
   return current ? { id: current.id, capturedAt: current.capturedAt } : undefined;
 }
 
-function sourceKey(source) {
-  const providerId = source.sourceRaceId ?? `event:${source.eventId}`;
-  return `${source.provider}:${providerId}`;
+function sourceRaceKey(sourceRace) {
+  return `${sourceRace.provider}:${sourceRace.sourceRaceId}`;
 }
 
-function errorMessage(error, fallback) {
-  return error instanceof Error && error.message ? error.message : fallback;
-}
-
-function enforceRateLimit(limiter, req, res, sourceRace) {
-  const result = limiter.consume({ requester: req.ip, sourceRace });
+function enforceRateLimit(limiter, req, res, keys) {
+  const result = limiter.consume(keys);
   if (result.allowed) return true;
 
   res.set('Retry-After', String(Math.max(1, Math.ceil(result.retryAfterMs / 1000))));
@@ -40,9 +36,14 @@ function sourceRaceResponse(current, extra = {}) {
   };
 }
 
-export function createApp({ archive, sources, limiter }) {
+export function createApp({
+  archive,
+  sources,
+  limiter,
+  trustedProxyIps,
+  requesterId = createRequesterId({ trustedProxyIps })
+}) {
   const app = express();
-  app.set('trust proxy', 1);
   app.use(express.json());
 
   app.post('/api/archive/ingest', async (req, res) => {
@@ -51,42 +52,50 @@ export function createApp({ archive, sources, limiter }) {
       canonicalSource = canonicalizeSourceInput(req.body?.input);
     } catch (error) {
       return res.status(400).json({
-        error: errorMessage(error, 'Invalid archive source input.')
+        error: 'Only supported LiveLaps and Moto-Tally race inputs can be archived.'
       });
     }
 
-    if (!enforceRateLimit(limiter, req, res, sourceKey(canonicalSource))) return;
+    if (!enforceRateLimit(limiter, req, res, { requester: requesterId(req) })) return;
 
     let loaded;
     try {
       loaded = await sources.load(req.body.input);
     } catch (error) {
-      return res.status(503).json({
-        error: errorMessage(error, 'The timing source could not be loaded.')
-      });
+      console.error('Archive API ingest load failed.', error);
+      return res.status(503).json({ error: 'Unable to load the timing source.' });
     }
+
+    if (!enforceRateLimit(limiter, req, res, { sourceRace: sourceRaceKey(loaded.sourceRace) })) return;
 
     try {
       const current = archive.saveSnapshot(loaded, new Date().toISOString());
       return res.status(201).json(sourceRaceResponse(current));
     } catch (error) {
-      return res.status(500).json({
-        error: errorMessage(error, 'The race snapshot could not be archived.')
-      });
+      console.error('Archive API ingest persistence failed.', error);
+      return res.status(500).json({ error: 'Unable to archive the race snapshot.' });
     }
   });
 
   app.post('/api/source-races/:id/refresh', async (req, res) => {
     const current = archive.getCurrentSnapshot(req.params.id);
     if (!current) return res.status(404).json({ error: 'Archived source race not found.' });
-    if (!enforceRateLimit(limiter, req, res, current.sourceRace.id)) return;
+    if (
+      !enforceRateLimit(limiter, req, res, {
+        requester: requesterId(req),
+        sourceRace: current.sourceRace.id
+      })
+    ) {
+      return;
+    }
 
     let loaded;
     try {
       loaded = await sources.refresh(current.sourceRace);
     } catch (error) {
+      console.error('Archive API refresh load failed.', error);
       return res.status(503).json({
-        error: errorMessage(error, 'The timing source could not be refreshed.'),
+        error: 'Unable to refresh the timing source.',
         currentSnapshot: currentSnapshotMetadata(current)
       });
     }
@@ -95,8 +104,9 @@ export function createApp({ archive, sources, limiter }) {
       const refreshed = archive.saveSnapshot(loaded, new Date().toISOString());
       return res.json(sourceRaceResponse(refreshed, { refreshed: true }));
     } catch (error) {
+      console.error('Archive API refresh persistence failed.', error);
       return res.status(500).json({
-        error: errorMessage(error, 'The refreshed snapshot could not be archived.'),
+        error: 'Unable to archive the refreshed snapshot.',
         currentSnapshot: currentSnapshotMetadata(archive.getCurrentSnapshot(req.params.id))
       });
     }
@@ -126,6 +136,7 @@ export function createApp({ archive, sources, limiter }) {
     if (error instanceof SyntaxError && error.status === 400) {
       return res.status(400).json({ error: 'Invalid JSON request body.' });
     }
+    console.error('Archive API unexpected error.', error);
     return res.status(500).json({ error: 'Unexpected server error.' });
   });
 
