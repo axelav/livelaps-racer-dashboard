@@ -75,6 +75,9 @@ export function decompressArtifact(blob) {}
     "better-sqlite3": "^12.0.0",
     "express": "^5.0.0",
     "linkedom": "^0.18.0"
+  },
+  "devDependencies": {
+    "supertest": "^7.0.0"
   }
 }
 ```
