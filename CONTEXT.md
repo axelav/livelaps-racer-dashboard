@@ -9,5 +9,5 @@ The shared collection of persisted public race data available to every Enduro Br
 _Avoid_: User library, private cache
 
 **Race snapshot**:
-The normalized results and race metadata captured from one timing source at a particular time.
+The immutable normalized results and race metadata captured from one timing source at a particular time. Later fetches create later snapshots rather than replacing it.
 _Avoid_: Live result, cached response
