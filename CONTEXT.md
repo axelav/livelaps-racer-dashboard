@@ -16,6 +16,10 @@ _Avoid_: Live result, cached response
 The unmodified API payload or source HTML from which a Race Snapshot is derived.
 _Avoid_: Raw cache, scrape output
 
+**Refresh**:
+An explicit request to fetch a race from its timing source and create a later Race Snapshot. Normal archive views use the newest stored snapshot without fetching upstream.
+_Avoid_: Reload, cache invalidation
+
 **Racer history**:
 A racer-centric comparison that groups selected Race Entries by an exact normalized name across archived races. It is a browser-local view, not a shared racer record.
 _Avoid_: Combined leaderboard, event standings
