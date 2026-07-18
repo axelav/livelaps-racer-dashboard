@@ -99,6 +99,25 @@ The frontend consumes normalized API representations only. Provider adapters rem
 - Missing Moto-Tally calendar metadata: archive valid results without those optional fields.
 - Unmatched racer name in another archive entry: do not include it in the history.
 
+## Operations
+
+The Node service reads `ENDURO_DB_PATH`, which defaults to `/data/enduro.db`.
+Production mounts the `enduro-data` Docker volume at `/data`; this volume is
+the complete durable archive, including SQLite's journal files and compressed
+raw source artifacts. Back up the volume while Enduro is stopped, and restore
+it before starting the service so SQLite sees one consistent database state.
+
+The archive is intentionally cache-first: normal opens read the latest
+successful Current Snapshot, adding an unarchived supported source creates a
+snapshot synchronously, and only the explicit refresh action fetches an
+already archived source. A failed refresh preserves the prior snapshot.
+Supported inputs are canonical LiveLaps and Moto-Tally results only; the
+providers remain distinct Source Races in the archive.
+
+When Enduro runs behind Traefik, `ENDURO_TRUSTED_PROXY_IPS` must list only the
+trusted proxy network. This permits rate limiting by the forwarded client IP
+without accepting spoofed forwarded headers from direct clients.
+
 ## Verification
 
 Tests cover:

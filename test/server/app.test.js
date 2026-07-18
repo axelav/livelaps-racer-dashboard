@@ -349,4 +349,17 @@ describe('archive API', () => {
       }
     });
   });
+
+  it('makes an ingested race immediately available in that racer’s history', async () => {
+    const created = await request(app).post('/api/archive/ingest').send({ input: '79103' });
+    const history = await request(app).get(
+      `/api/history/${encodeURIComponent(normalizeRacerName('Axel Anderson'))}`
+    );
+
+    expect(created.status).toBe(201);
+    expect(history.status).toBe(200);
+    expect(history.body.races).toContainEqual(
+      expect.objectContaining({ sourceRaceId: created.body.sourceRace.id })
+    );
+  });
 });
