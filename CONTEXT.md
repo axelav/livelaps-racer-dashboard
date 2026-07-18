@@ -36,6 +36,14 @@ _Avoid_: Latest attempted fetch, stale cache
 A racer-centric comparison that groups every archived Race Entry with an exact normalized name match. It is a browser-local view, not a shared racer record.
 _Avoid_: Combined leaderboard, event standings
 
+**History dashboard**:
+The primary view of a Racer History, showing cross-race trends and a picker for its individual Race Entries.
+_Avoid_: Race detail, combined leaderboard
+
+**Race detail**:
+The existing section-by-section breakdown for one Race Entry, selected from the History Dashboard.
+_Avoid_: History dashboard, event list
+
 **Saved selection**:
 The browser-local record of a visitor's racer-history name, which can be cleared by that visitor.
 _Avoid_: Shared profile, user account
