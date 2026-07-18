@@ -24,6 +24,10 @@ _Avoid_: Reload, cache invalidation
 The act of adding a race to the shared Race Archive by successfully loading a supported public timing-source URL. Any visitor may initiate archive ingestion.
 _Avoid_: Private import, curator approval
 
+**Synchronous ingestion**:
+Archive ingestion that completes its upstream fetch, normalization, and Race Snapshot creation within the initiating visitor's request.
+_Avoid_: Background import, queued ingestion
+
 **Racer history**:
 A racer-centric comparison that groups selected Race Entries by an exact normalized name across archived races. It is a browser-local view, not a shared racer record.
 _Avoid_: Combined leaderboard, event standings
