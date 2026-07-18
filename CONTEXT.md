@@ -15,3 +15,7 @@ _Avoid_: Live result, cached response
 **Source artifact**:
 The unmodified API payload or source HTML from which a Race Snapshot is derived.
 _Avoid_: Raw cache, scrape output
+
+**Racer history**:
+A racer-centric comparison of that racer's results across selected archived races.
+_Avoid_: Combined leaderboard, event standings
