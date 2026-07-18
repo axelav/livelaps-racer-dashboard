@@ -33,11 +33,11 @@ The newest successfully created Race Snapshot for an archived race. A failed Ref
 _Avoid_: Latest attempted fetch, stale cache
 
 **Racer history**:
-A racer-centric comparison that groups selected Race Entries by an exact normalized name across archived races. It is a browser-local view, not a shared racer record.
+A racer-centric comparison that groups every archived Race Entry with an exact normalized name match. It is a browser-local view, not a shared racer record.
 _Avoid_: Combined leaderboard, event standings
 
 **Saved selection**:
-The browser-local record of a visitor's chosen archive races and racer-history name, which can be cleared by that visitor.
+The browser-local record of a visitor's racer-history name, which can be cleared by that visitor.
 _Avoid_: Shared profile, user account
 
 **Race entry**:
