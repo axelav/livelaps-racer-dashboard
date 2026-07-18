@@ -52,6 +52,60 @@ export function parseRaceName(doc) {
   return doc.querySelector('#mtR_h1RREventName')?.textContent.trim() ?? '';
 }
 
+function calendarDate(value) {
+  const text = value.trim();
+  const numeric = text.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
+  if (numeric) {
+    const [, month, day, year] = numeric;
+    return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+  }
+
+  const parsed = new Date(text);
+  if (Number.isNaN(parsed.valueOf())) return null;
+  return [parsed.getUTCFullYear(), String(parsed.getUTCMonth() + 1).padStart(2, '0'), String(parsed.getUTCDate()).padStart(2, '0')].join('-');
+}
+
+function calendarValue(cells, column) {
+  const value = cells[column]?.textContent.replace(/ /g, ' ').trim();
+  return value || null;
+}
+
+export function parseCalendarMetadata(doc, descriptor) {
+  for (const table of doc.querySelectorAll('table')) {
+    const rows = Array.from(table.querySelectorAll('tr'));
+    const headerIndex = rows.findIndex((row) =>
+      Array.from(row.querySelectorAll('th, td')).some((cell) =>
+        /^race\s*#?$/i.test(cell.textContent.trim())
+      )
+    );
+    if (headerIndex < 0) continue;
+
+    const headers = Array.from(rows[headerIndex].querySelectorAll('th, td')).map((cell) =>
+      cell.textContent.replace(/ /g, ' ').trim().toLowerCase()
+    );
+    const raceColumn = headers.findIndex((header) => /^race\s*#?$/.test(header));
+    const dateColumn = headers.findIndex((header) => header === 'date');
+    const locationColumn = headers.findIndex((header) => /^(location|city|venue)$/.test(header));
+    const clubColumn = headers.findIndex((header) => /^(club|organizer|organization)$/.test(header));
+    if (raceColumn < 0 || dateColumn < 0) continue;
+
+    for (const row of rows.slice(headerIndex + 1)) {
+      const cells = Array.from(row.querySelectorAll('td'));
+      const round = calendarValue(cells, raceColumn)?.match(/\d+/)?.[0];
+      const eventDate = calendarDate(calendarValue(cells, dateColumn) ?? '');
+      if (round !== String(descriptor.round) || eventDate?.slice(0, 4) !== String(descriptor.year)) continue;
+
+      return {
+        eventDate,
+        location: locationColumn < 0 ? null : calendarValue(cells, locationColumn),
+        organizer: clubColumn < 0 ? null : calendarValue(cells, clubColumn)
+      };
+    }
+  }
+
+  return { eventDate: null, location: null, organizer: null };
+}
+
 export function parseOverallOptions(doc) {
   const select = doc.querySelector('#mtR_ddlSelectClass');
   if (!select) return [];
@@ -205,11 +259,12 @@ function buildPath({ org, discipline, year, round, group }, view = 'CS') {
   return `${org}/${discipline}/Results.aspx/${year}/${round}/${group}/${view}`;
 }
 
-async function fetchDoc(path) {
-  const response = await fetch(PROXY_PREFIX + path);
+async function fetchDoc(path, fetchImpl = globalThis.fetch, parseHtml = (html) =>
+  new DOMParser().parseFromString(html, 'text/html')) {
+  const response = await fetchImpl(PROXY_PREFIX + path);
   if (!response.ok) throw new Error(`Moto-Tally proxy request failed: ${response.status} ${path}`);
   const html = await response.text();
-  return new DOMParser().parseFromString(html, 'text/html');
+  return parseHtml(html);
 }
 
 function descriptorToRaceId({ org, discipline, year, round, group }) {
@@ -222,22 +277,22 @@ function raceIdToDescriptor(raceId) {
   return { org, discipline, year, round, group };
 }
 
-async function resolveClassToOverall(descriptor) {
-  const classDoc = await fetchDoc(buildPath(descriptor));
+async function resolveClassToOverall(descriptor, fetchImpl, parseHtml) {
+  const classDoc = await fetchDoc(buildPath(descriptor), fetchImpl, parseHtml);
   const classAmas = parseAmaSet(classDoc);
   const overallGroups = parseOverallOptions(classDoc);
   const summaries = await Promise.all(
     overallGroups.map(async (group) => ({
       group,
-      amaSet: parseAmaSet(await fetchDoc(buildPath({ ...descriptor, group })))
+      amaSet: parseAmaSet(await fetchDoc(buildPath({ ...descriptor, group }), fetchImpl, parseHtml))
     }))
   );
   const picked = pickContainingGroup(summaries, classAmas);
   return picked ? { ...descriptor, group: picked.group } : descriptor;
 }
 
-async function loadOverall(descriptor) {
-  const doc = await fetchDoc(buildPath(descriptor));
+async function loadOverall(descriptor, fetchImpl, parseHtml) {
+  const doc = await fetchDoc(buildPath(descriptor), fetchImpl, parseHtml);
   return {
     raceId: descriptorToRaceId(descriptor),
     raceMeta: { raceName: parseRaceName(doc), modeName: 'Enduro' },
@@ -245,12 +300,14 @@ async function loadOverall(descriptor) {
   };
 }
 
-export async function resolveAndLoadRace(input) {
+export async function resolveAndLoadRace(input, fetchImpl, parseHtml) {
   const descriptor = parseMotoTallyUrl(input);
-  const overall = descriptor.group.startsWith('O') ? descriptor : await resolveClassToOverall(descriptor);
-  return loadOverall(overall);
+  const overall = descriptor.group.startsWith('O')
+    ? descriptor
+    : await resolveClassToOverall(descriptor, fetchImpl, parseHtml);
+  return loadOverall(overall, fetchImpl, parseHtml);
 }
 
-export async function loadRaceById(raceId) {
-  return loadOverall(raceIdToDescriptor(raceId));
+export async function loadRaceById(raceId, fetchImpl, parseHtml) {
+  return loadOverall(raceIdToDescriptor(raceId), fetchImpl, parseHtml);
 }

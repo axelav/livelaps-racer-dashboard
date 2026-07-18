@@ -63,24 +63,24 @@ export function deriveSectionSeries(racer) {
   };
 }
 
-async function apiGet(path) {
-  const response = await fetch(API_BASE + path);
+async function apiGet(path, fetchImpl = globalThis.fetch) {
+  const response = await fetchImpl(API_BASE + path);
   if (!response.ok) {
     throw new Error(`LiveLaps API request failed: ${response.status} ${path}`);
   }
   return response.json();
 }
 
-export async function fetchRace(raceId) {
-  const json = await apiGet(`race/${raceId}`);
+export async function fetchRace(raceId, fetchImpl) {
+  const json = await apiGet(`race/${raceId}`, fetchImpl);
   return { raceName: json.message.Race_Name, modeName: json.message.RACE_MODE_NAME };
 }
 
-export async function fetchAllResults(raceId) {
+export async function fetchAllResults(raceId, fetchImpl) {
   let page = 1;
   let all = [];
   while (page <= 500) {
-    const json = await apiGet(`race/results/${raceId}?page=${page}&size=1000`);
+    const json = await apiGet(`race/results/${raceId}?page=${page}&size=1000`, fetchImpl);
     all = all.concat(json.data);
     if (!json.has_more_pages || all.length >= json.total) break;
     page += 1;
@@ -88,13 +88,16 @@ export async function fetchAllResults(raceId) {
   return all;
 }
 
-export async function fetchEventRaces(eventId) {
-  const json = await apiGet(`race/event/${eventId}`);
+export async function fetchEventRaces(eventId, fetchImpl) {
+  const json = await apiGet(`race/event/${eventId}`, fetchImpl);
   return json.message;
 }
 
-export async function loadRaceById(raceId) {
-  const [raceMeta, allResults] = await Promise.all([fetchRace(raceId), fetchAllResults(raceId)]);
+export async function loadRaceById(raceId, fetchImpl) {
+  const [raceMeta, allResults] = await Promise.all([
+    fetchRace(raceId, fetchImpl),
+    fetchAllResults(raceId, fetchImpl)
+  ]);
   if (raceMeta.modeName !== 'Enduro') {
     throw new UnsupportedFormatError(
       "This race format isn't supported yet — Enduro Breakdown currently works with section-based races."
@@ -103,7 +106,7 @@ export async function loadRaceById(raceId) {
   return { raceId, raceMeta, allResults };
 }
 
-export async function resolveAndLoadRace(input) {
+export async function resolveAndLoadRace(input, fetchImpl) {
   const parsed = parseRaceId(input);
   if (!parsed) {
     throw new UnparseableInputError(
@@ -113,7 +116,7 @@ export async function resolveAndLoadRace(input) {
 
   let raceId = parsed.id;
   if (parsed.isEvent) {
-    const races = await fetchEventRaces(parsed.id);
+    const races = await fetchEventRaces(parsed.id, fetchImpl);
     if (races.length === 0) {
       throw new MultiRaceEventError('This event has no races yet.');
     }
@@ -125,5 +128,5 @@ export async function resolveAndLoadRace(input) {
     raceId = races[0].id;
   }
 
-  return loadRaceById(raceId);
+  return loadRaceById(raceId, fetchImpl);
 }
