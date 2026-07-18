@@ -28,6 +28,10 @@ _Avoid_: Private import, curator approval
 Archive ingestion that completes its upstream fetch, normalization, and Race Snapshot creation within the initiating visitor's request.
 _Avoid_: Background import, queued ingestion
 
+**Current snapshot**:
+The newest successfully created Race Snapshot for an archived race. A failed Refresh never replaces it.
+_Avoid_: Latest attempted fetch, stale cache
+
 **Racer history**:
 A racer-centric comparison that groups selected Race Entries by an exact normalized name across archived races. It is a browser-local view, not a shared racer record.
 _Avoid_: Combined leaderboard, event standings
