@@ -17,17 +17,9 @@ The unmodified API payload or source HTML from which a Race Snapshot is derived.
 _Avoid_: Raw cache, scrape output
 
 **Racer history**:
-A racer-centric comparison of that racer's results across selected archived races.
+A racer-centric comparison that groups selected Race Entries by an exact normalized name across archived races. It is a browser-local view, not a shared racer record.
 _Avoid_: Combined leaderboard, event standings
 
-**Racer profile**:
-A shared identity record that groups Race Entries confirmed to belong to one real racer.
-_Avoid_: Source participant, unverified name match
-
 **Race entry**:
-One racer's result within a Race Snapshot. A Race Entry may be linked to a Racer Profile only through a persisted confirmation.
+One racer's result within a Race Snapshot.
 _Avoid_: Racer, profile
-
-**Identity evidence**:
-A source-supplied value that helps suggest a Racer Profile link, such as a Moto-Tally AMA number, a source participant ID, or a normalized name. It never replaces confirmation.
-_Avoid_: Identity, proof
