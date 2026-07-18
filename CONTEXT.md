@@ -20,6 +20,10 @@ _Avoid_: Raw cache, scrape output
 An explicit request to fetch a race from its timing source and create a later Race Snapshot. Normal archive views use the newest stored snapshot without fetching upstream.
 _Avoid_: Reload, cache invalidation
 
+**Archive ingestion**:
+The act of adding a race to the shared Race Archive by successfully loading a supported public timing-source URL. Any visitor may initiate archive ingestion.
+_Avoid_: Private import, curator approval
+
 **Racer history**:
 A racer-centric comparison that groups selected Race Entries by an exact normalized name across archived races. It is a browser-local view, not a shared racer record.
 _Avoid_: Combined leaderboard, event standings
