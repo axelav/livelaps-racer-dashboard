@@ -2,6 +2,7 @@ import './style.css';
 import { archiveApi, archivedRaceFromResponse } from './api.js';
 import { renderSearch } from './search.js';
 import { renderDashboard } from './dashboard.js';
+import { clearSavedRacerName, normalizeRacerName, renderHistory, saveRacerName } from './history.js';
 
 const app = document.getElementById('app');
 let requestId = 0;
@@ -61,7 +62,7 @@ function showSearchDefault() {
   showSearch({ race: activeRace });
 }
 
-async function showDashboard(raceId, participantId, loadedRace, ingestInput) {
+async function showDashboard(raceId, participantId, loadedRace, ingestInput, knownHistory) {
   const thisRequest = ++requestId;
   try {
     const race =
@@ -81,7 +82,38 @@ async function showDashboard(raceId, participantId, loadedRace, ingestInput) {
       showSearch({ race, notice: "Couldn't find that racer in this race." });
       return;
     }
-    renderDashboard(app, {
+    const normalizedName = normalizeRacerName(totals.racer.fullName);
+    const racerHistory = knownHistory ?? (await archiveApi.history(normalizedName));
+    if (thisRequest !== requestId) return;
+    saveRacerName(normalizedName);
+    app.innerHTML = `
+      <div class="dashboard-layout">
+        <aside class="dashboard-history" data-slot="historyPanel"></aside>
+        <main class="dashboard-detail" data-slot="detailPanel"></main>
+      </div>
+    `;
+    const historyPanel = app.querySelector('[data-slot="historyPanel"]');
+    const detailPanel = app.querySelector('[data-slot="detailPanel"]');
+    renderHistory(historyPanel, {
+      history: racerHistory,
+      selectedSourceRaceId: race.raceId,
+      onSelectRace: async (selectedRaceId) => {
+        if (selectedRaceId === race.raceId) return;
+        try {
+          const selectedRace = await loadArchivedRace(selectedRaceId);
+          const selectedRacer = selectedRace.allResults.find(
+            (entry) => normalizeRacerName(entry.fullName) === normalizedName
+          );
+          if (!selectedRacer) throw new Error("Couldn't find that racer in this archived race.");
+          await showDashboard(selectedRaceId, selectedRacer.id, selectedRace, undefined, racerHistory);
+        } catch (error) {
+          console.error(error);
+          window.alert(error.message || "Couldn't load that archived race.");
+        }
+      },
+      onClear: () => clearSavedRacerName()
+    });
+    renderDashboard(detailPanel, {
       raceMeta: race.raceMeta,
       capturedAt: race.capturedAt,
       ...totals,

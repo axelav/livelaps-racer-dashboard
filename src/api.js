@@ -39,5 +39,6 @@ export const archiveApi = {
   search: (query) => get(`/api/archive?q=${encodeURIComponent(query)}`),
   ingest: (input) => post('/api/archive/ingest', { input }),
   refresh: (id) => post(`/api/source-races/${encodeURIComponent(id)}/refresh`),
-  sourceRace: (id) => get(`/api/source-races/${encodeURIComponent(id)}`)
+  sourceRace: (id) => get(`/api/source-races/${encodeURIComponent(id)}`),
+  history: (normalizedName) => get(`/api/history/${encodeURIComponent(normalizedName)}`)
 };

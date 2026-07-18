@@ -6,7 +6,8 @@ const api = vi.hoisted(() => ({
   search: vi.fn(),
   ingest: vi.fn(),
   refresh: vi.fn(),
-  sourceRace: vi.fn()
+  sourceRace: vi.fn(),
+  history: vi.fn()
 }));
 
 vi.mock('../src/api.js', () => ({
@@ -42,6 +43,11 @@ beforeEach(() => {
   vi.resetModules();
   Object.values(api).forEach((mock) => mock.mockReset());
   api.search.mockResolvedValue({ races: [] });
+  api.history.mockResolvedValue({
+    racerName: 'Axel Anderson',
+    races: [],
+    trends: { overallPercentiles: [], classPercentiles: [] }
+  });
   document.body.innerHTML = '<div id="app"></div>';
   history.replaceState({}, '', '/');
 });
@@ -75,4 +81,81 @@ it('canonicalizes a numeric race query before rendering its racer detail', async
   expect(api.ingest).not.toHaveBeenCalled();
   expect(new URLSearchParams(location.search).get('race')).toBe('livelaps:79103');
   expect(new URLSearchParams(location.search).get('id')).toBe('4758874');
+});
+
+it('loads all archived history for the selected racer without changing race detail', async () => {
+  api.sourceRace.mockResolvedValueOnce(archivedRace([AXEL_ENTRY]));
+  api.history.mockResolvedValueOnce({
+    racerName: 'Axel Anderson',
+    races: [
+      {
+        sourceRaceId: 'livelaps:79103',
+        raceName: 'Test Enduro',
+        eventDate: '2026-07-12',
+        eventDateProvenance: 'source',
+        provider: 'livelaps',
+        overallPosition: 2,
+        fieldSize: 45,
+        overallPercentile: 98,
+        classPosition: 1,
+        classSize: 12,
+        classPercentile: 100,
+        totalTimeSeconds: 7200
+      }
+    ],
+    trends: { overallPercentiles: [98], classPercentiles: [100] }
+  });
+  history.replaceState({}, '', '/?race=livelaps%3A79103&id=4758874');
+
+  await import('../src/main.js?history-dashboard');
+
+  await vi.waitFor(() => expect(api.history).toHaveBeenCalledWith('axel anderson'));
+  expect(document.querySelector('[data-slot="historyPanel"]')?.textContent).toContain(
+    'History dashboard'
+  );
+  expect(localStorage.getItem('enduro-breakdown.racer-name')).toBe('axel anderson');
+});
+
+it('changes only race detail when a history race is selected', async () => {
+  const motoRace = {
+    ...archivedRace([AXEL_ENTRY]),
+    sourceRace: {
+      id: 'mototally:ECEA/Enduro/2026/6/O1',
+      provider: 'mototally',
+      sourceRaceId: 'ECEA/Enduro/2026/6/O1',
+      raceName: 'Pine Barrens'
+    },
+    snapshot: {
+      ...archivedRace([AXEL_ENTRY]).snapshot,
+      raceMeta: { raceName: 'Pine Barrens' }
+    }
+  };
+  api.sourceRace.mockResolvedValueOnce(archivedRace([AXEL_ENTRY])).mockResolvedValueOnce(motoRace);
+  api.history.mockResolvedValueOnce({
+    racerName: 'Axel Anderson',
+    races: [
+      {
+        sourceRaceId: 'livelaps:79103', raceName: 'Test Enduro', eventDate: '2026-07-12',
+        eventDateProvenance: 'source', provider: 'livelaps', overallPosition: 2, fieldSize: 45,
+        overallPercentile: 98, classPosition: 1, classSize: 12, classPercentile: 100, totalTimeSeconds: 7200
+      },
+      {
+        sourceRaceId: 'mototally:ECEA/Enduro/2026/6/O1', raceName: 'Pine Barrens', eventDate: '2026-07-19',
+        eventDateProvenance: 'source', provider: 'mototally', overallPosition: 4, fieldSize: 40,
+        overallPercentile: 92, classPosition: 2, classSize: 10, classPercentile: 90, totalTimeSeconds: 7300
+      }
+    ],
+    trends: { overallPercentiles: [98, 92], classPercentiles: [100, 90] }
+  });
+  history.replaceState({}, '', '/?race=livelaps%3A79103&id=4758874');
+
+  await import('../src/main.js?history-picker');
+  await vi.waitFor(() => expect(document.querySelector('[data-slot="racePicker"]')).not.toBeNull());
+  const picker = document.querySelector('[data-slot="racePicker"]');
+  picker.value = 'mototally:ECEA/Enduro/2026/6/O1';
+  picker.dispatchEvent(new Event('change'));
+
+  await vi.waitFor(() => expect(api.sourceRace).toHaveBeenCalledWith('mototally:ECEA/Enduro/2026/6/O1'));
+  expect(api.history).toHaveBeenCalledTimes(1);
+  expect(document.querySelector('[data-slot="title"]')?.textContent).toContain('Axel Anderson');
 });
