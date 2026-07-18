@@ -44,6 +44,10 @@ _Avoid_: Latest attempted fetch, stale cache
 A racer-centric comparison that groups every archived Race Entry with an exact normalized name match. It is a browser-local view, not a shared racer record.
 _Avoid_: Combined leaderboard, event standings
 
+**Normalized racer name**:
+A race entry's name after case, whitespace, punctuation, and diacritics are ignored for Racer History matching. It does not infer aliases, nicknames, or reordered names.
+_Avoid_: Racer profile, fuzzy match
+
 **History dashboard**:
 The primary view of a Racer History, showing cross-race trends and a picker for its individual Race Entries.
 _Avoid_: Race detail, combined leaderboard
