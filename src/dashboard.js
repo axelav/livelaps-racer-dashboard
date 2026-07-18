@@ -4,7 +4,17 @@ import { deriveSectionSeries, formatDuration, parseDuration } from './livelaps.j
 const TEMPLATE = `
   <div class="viz-root">
     <div class="wrap">
-      <button class="back-link" type="button" data-slot="back">&larr; Search another racer</button>
+      <div class="race-actions">
+        <button class="back-link" type="button" data-slot="back">&larr; Search another racer</button>
+        <div class="snapshot-actions">
+          <span data-slot="capturedAt"></span>
+          <button type="button" data-slot="refresh">Refresh</button>
+        </div>
+      </div>
+      <div class="notice" data-slot="refreshNotice" role="alert" hidden>
+        <p data-slot="refreshNoticeText"></p>
+        <button type="button" data-slot="refreshNoticeDismiss" aria-label="Dismiss">&times;</button>
+      </div>
       <div class="masthead">
         <p class="eyebrow" data-slot="eyebrow"></p>
         <h1 data-slot="title"></h1>
@@ -107,11 +117,41 @@ function buildLegend(container, items) {
   container.appendChild(wrap);
 }
 
-export function renderDashboard(container, { raceMeta, racer, fieldSize, classSize, onBack }) {
+export function renderDashboard(
+  container,
+  { raceMeta, racer, fieldSize, classSize, capturedAt, onBack, onRefresh }
+) {
   container.innerHTML = TEMPLATE;
   const slot = (name) => container.querySelector(`[data-slot="${name}"]`);
 
   slot('back').addEventListener('click', onBack);
+  const capturedDate = new Date(capturedAt);
+  slot('capturedAt').textContent = Number.isNaN(capturedDate.getTime())
+    ? `Archived ${capturedAt}`
+    : `Captured ${capturedDate.toLocaleString()}`;
+  slot('refreshNoticeDismiss').addEventListener('click', () => {
+    slot('refreshNotice').hidden = true;
+  });
+  slot('refresh').addEventListener('click', async () => {
+    const button = slot('refresh');
+    button.disabled = true;
+    button.textContent = 'Refreshing…';
+    slot('refreshNotice').hidden = true;
+    try {
+      await onRefresh();
+    } catch (error) {
+      console.error(error);
+      slot('refreshNoticeText').textContent = `${
+        error instanceof Error && error.message
+          ? error.message
+          : 'Unable to refresh the timing source.'
+      } The captured results remain available.`;
+      slot('refreshNotice').hidden = false;
+    } finally {
+      button.disabled = false;
+      button.textContent = 'Refresh';
+    }
+  });
 
   slot('eyebrow').textContent = raceMeta.raceName;
   slot('title').textContent = `${racer.fullName} — enduro breakdown`;
