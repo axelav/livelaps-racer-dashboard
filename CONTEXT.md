@@ -44,6 +44,14 @@ _Avoid_: Race detail, combined leaderboard
 The existing section-by-section breakdown for one Race Entry, selected from the History Dashboard.
 _Avoid_: History dashboard, event list
 
+**Performance percentile**:
+A racer's relative placement within an overall field or class field, used to compare performance across races with different entrant counts.
+_Avoid_: Raw placement, finish time
+
+**Results ledger**:
+The chronological list of exact per-race placements and times accompanying History Dashboard trends.
+_Avoid_: Trend chart, combined leaderboard
+
 **Saved selection**:
 The browser-local record of a visitor's racer-history name, which can be cleared by that visitor.
 _Avoid_: Shared profile, user account
