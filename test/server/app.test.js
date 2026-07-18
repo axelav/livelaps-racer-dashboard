@@ -249,10 +249,26 @@ describe('archive API', () => {
 
     expect(response.status).toBe(429);
     expect(response.body).toEqual({ error: 'Rate limit exceeded for source race.' });
-    expect(sources.load).toHaveBeenCalledTimes(2);
+    expect(sources.load).toHaveBeenCalledTimes(1);
   });
 
-  it('shares a resolved LiveLaps race bucket across event, canonical race, and refresh requests', async () => {
+  it('limits repeated LiveLaps event links before they resolve upstream', async () => {
+    app = createApp({
+      archive,
+      sources,
+      limiter: testLimiter({ sourceRace: { limit: 1, windowMs: 60_000 } })
+    });
+
+    const event = 'https://www.livelaps.com/livelaps/eventScores/40001';
+    const first = await request(app).post('/api/archive/ingest').send({ input: event });
+    const second = await request(app).post('/api/archive/ingest').send({ input: event });
+
+    expect(first.status).toBe(201);
+    expect(second.status).toBe(429);
+    expect(sources.load).toHaveBeenCalledTimes(1);
+  });
+
+  it('shares a known LiveLaps race bucket across direct race and refresh requests', async () => {
     sources.load.mockImplementation(async () => loadedRace({ sourceRaceId: '79103' }));
     app = createApp({
       archive,
@@ -267,9 +283,9 @@ describe('archive API', () => {
     const refresh = await request(app).post('/api/source-races/livelaps%3A79103/refresh');
 
     expect(event.status).toBe(201);
-    expect(canonicalRace.status).toBe(429);
+    expect(canonicalRace.status).toBe(201);
     expect(refresh.status).toBe(429);
-    expect(canonicalRace.body).toEqual({ error: 'Rate limit exceeded for source race.' });
+    expect(sources.load).toHaveBeenCalledTimes(2);
     expect(sources.refresh).not.toHaveBeenCalled();
   });
 

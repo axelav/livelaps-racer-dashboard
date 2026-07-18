@@ -19,6 +19,17 @@ function sourceRaceKey(sourceRace) {
   return `${sourceRace.provider}:${sourceRace.sourceRaceId}`;
 }
 
+function sourceInputRateLimitKey(source) {
+  // Moto-Tally class and overall result URLs for a round resolve to one
+  // archived overall result. The group is not a stable source-race identity
+  // until that page is loaded, so protect the round before fetching it.
+  if (source.provider === 'mototally') {
+    return `${source.provider}:${source.sourceRaceId.split('/').slice(0, 4).join('/')}`;
+  }
+  if (source.sourceRaceId) return sourceRaceKey(source);
+  return `${source.provider}:event:${source.eventId}`;
+}
+
 function enforceRateLimit(limiter, req, res, keys) {
   const result = limiter.consume(keys);
   if (result.allowed) return true;
@@ -56,7 +67,18 @@ export function createApp({
       });
     }
 
-    if (!enforceRateLimit(limiter, req, res, { requester: requesterId(req) })) return;
+    // Race IDs are known before loading, so reject a saturated source bucket
+    // before it can trigger another upstream request. Event links resolve to a
+    // race only upstream; their stable event ID is used as a separate bucket
+    // to give the same no-repeat protection without guessing a race identity.
+    if (
+      !enforceRateLimit(limiter, req, res, {
+        requester: requesterId(req),
+        sourceRace: sourceInputRateLimitKey(canonicalSource)
+      })
+    ) {
+      return;
+    }
 
     let loaded;
     try {
@@ -65,8 +87,6 @@ export function createApp({
       console.error('Archive API ingest load failed.', error);
       return res.status(503).json({ error: 'Unable to load the timing source.' });
     }
-
-    if (!enforceRateLimit(limiter, req, res, { sourceRace: sourceRaceKey(loaded.sourceRace) })) return;
 
     try {
       const current = archive.saveSnapshot(loaded, new Date().toISOString());
