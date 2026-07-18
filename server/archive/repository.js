@@ -33,7 +33,7 @@ function mapSourceRace(row) {
 }
 
 export function createArchive(db) {
-  const upsertSourceRace = db.prepare(`
+  const insertSourceRace = db.prepare(`
     INSERT INTO source_races (
       provider, source_race_id, canonical_url, race_name, mode_name,
       event_date, location, organizer
@@ -41,14 +41,21 @@ export function createArchive(db) {
       @provider, @sourceRaceId, @canonicalUrl, @raceName, @modeName,
       @eventDate, @location, @organizer
     )
-    ON CONFLICT(provider, source_race_id) DO UPDATE SET
-      canonical_url = excluded.canonical_url,
-      race_name = excluded.race_name,
-      mode_name = excluded.mode_name,
-      event_date = excluded.event_date,
-      location = excluded.location,
-      organizer = excluded.organizer
+    ON CONFLICT(provider, source_race_id) DO NOTHING
     RETURNING id
+  `);
+  const findSourceRace = db.prepare(
+    'SELECT id FROM source_races WHERE provider = ? AND source_race_id = ?'
+  );
+  const updateSourceRaceMetadata = db.prepare(`
+    UPDATE source_races
+    SET canonical_url = @canonicalUrl,
+        race_name = @raceName,
+        mode_name = @modeName,
+        event_date = @eventDate,
+        location = @location,
+        organizer = @organizer
+    WHERE id = @id
   `);
   const insertSnapshot = db.prepare(`
     INSERT INTO race_snapshots (
@@ -81,7 +88,7 @@ export function createArchive(db) {
 
   const persistSnapshot = db.transaction((loaded, capturedAt, normalizedJson, artifactBlob) => {
     const { sourceRace, normalized, artifact } = loaded;
-    const sourceId = upsertSourceRace.get({
+    const sourceRaceValues = {
       provider: sourceRace.provider,
       sourceRaceId: String(sourceRace.sourceRaceId),
       canonicalUrl: sourceRace.canonicalUrl,
@@ -90,7 +97,10 @@ export function createArchive(db) {
       eventDate: sourceRace.eventDate ?? null,
       location: sourceRace.location ?? null,
       organizer: sourceRace.organizer ?? null
-    }).id;
+    };
+    const sourceId =
+      insertSourceRace.get(sourceRaceValues)?.id ??
+      findSourceRace.get(sourceRaceValues.provider, sourceRaceValues.sourceRaceId).id;
     const snapshotId = insertSnapshot.run(
       sourceId,
       capturedAt,
@@ -139,7 +149,9 @@ export function createArchive(db) {
       }
     }
 
-    setCurrentSnapshot.run(snapshotId, sourceId, capturedAt);
+    if (setCurrentSnapshot.run(snapshotId, sourceId, capturedAt).changes) {
+      updateSourceRaceMetadata.run({ ...sourceRaceValues, id: sourceId });
+    }
     return sourceRaceKey(sourceRace.provider, sourceRace.sourceRaceId);
   });
 

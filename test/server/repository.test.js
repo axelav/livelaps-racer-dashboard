@@ -127,6 +127,35 @@ describe('archive repository', () => {
     expect(db.prepare('SELECT COUNT(*) AS count FROM race_snapshots').get().count).toBe(2);
   });
 
+  it('keeps Current Snapshot metadata and payload from the newest capture', () => {
+    const newer = loadedRace({
+      raceName: 'Newer Enduro',
+      canonicalUrl: 'https://example.test/livelaps/newer',
+      eventDate: '2026-07-18',
+      fullName: 'New Racer',
+      entryId: 200,
+      artifactText: '{"snapshot":"newer"}'
+    });
+    const older = loadedRace({
+      raceName: 'Older Enduro',
+      canonicalUrl: 'https://example.test/livelaps/older',
+      eventDate: '2026-07-16',
+      fullName: 'Old Racer',
+      entryId: 100,
+      artifactText: '{"snapshot":"older"}'
+    });
+    archive.saveSnapshot(newer, '2026-07-17T02:00:00.000Z');
+    archive.saveSnapshot(older, '2026-07-17T01:00:00.000Z');
+
+    expect(archive.getCurrentSnapshot('livelaps:79103')).toMatchObject({
+      capturedAt: '2026-07-17T02:00:00.000Z',
+      sourceRace: newer.sourceRace,
+      normalized: newer.normalized,
+      artifact: newer.artifact
+    });
+    expect(db.prepare('SELECT COUNT(*) AS count FROM race_snapshots').get().count).toBe(2);
+  });
+
   it('round-trips compressed source artifacts', () => {
     const artifactText = '<html>source bytes 🏁</html>';
     archive.saveSnapshot(
