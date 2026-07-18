@@ -113,6 +113,7 @@ it('loads all archived history for the selected racer without changing race deta
   expect(document.querySelector('[data-slot="historyPanel"]')?.textContent).toContain(
     'History dashboard'
   );
+  expect(document.querySelector('[data-slot="historyPanel"]')?.closest('.viz-root')).not.toBeNull();
   expect(localStorage.getItem('enduro-breakdown.racer-name')).toBe('axel anderson');
 });
 

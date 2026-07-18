@@ -87,9 +87,11 @@ async function showDashboard(raceId, participantId, loadedRace, ingestInput, kno
     if (thisRequest !== requestId) return;
     saveRacerName(normalizedName);
     app.innerHTML = `
-      <div class="dashboard-layout">
-        <aside class="dashboard-history" data-slot="historyPanel"></aside>
-        <main class="dashboard-detail" data-slot="detailPanel"></main>
+      <div class="viz-root">
+        <div class="dashboard-layout">
+          <aside class="dashboard-history" data-slot="historyPanel"></aside>
+          <main class="dashboard-detail" data-slot="detailPanel"></main>
+        </div>
       </div>
     `;
     const historyPanel = app.querySelector('[data-slot="historyPanel"]');
