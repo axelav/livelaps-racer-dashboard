@@ -96,6 +96,12 @@ export function renderHistory(
   picker.addEventListener('change', () => onSelectRace(picker.value));
   slot('clearHistory').addEventListener('click', onClear);
 
+  if (races.length === 0) {
+    picker.disabled = true;
+    slot('historyData').textContent = 'No archived events yet.';
+    return;
+  }
+
   const labels = races.map((race) => race.eventDate ?? race.raceName);
   lineChart(slot('overallTrend'), {
     ariaLabel: 'Overall percentile across archived events',

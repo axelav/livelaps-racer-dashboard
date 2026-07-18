@@ -160,3 +160,56 @@ it('changes only race detail when a history race is selected', async () => {
   expect(api.history).toHaveBeenCalledTimes(1);
   expect(document.querySelector('[data-slot="title"]')?.textContent).toContain('Axel Anderson');
 });
+
+it('keeps selected race detail visible when history loading fails', async () => {
+  api.sourceRace.mockResolvedValueOnce(archivedRace([AXEL_ENTRY]));
+  api.history.mockRejectedValueOnce(new Error('History service unavailable'));
+  history.replaceState({}, '', '/?race=livelaps%3A79103&id=4758874');
+
+  await import('../src/main.js?history-failure');
+
+  await vi.waitFor(() =>
+    expect(document.querySelector('[data-slot="title"]')?.textContent).toContain('Axel Anderson')
+  );
+  await vi.waitFor(() =>
+    expect(document.querySelector('[data-slot="historyPanel"]')?.textContent).toContain(
+      'History is unavailable'
+    )
+  );
+});
+
+it('does not let an older picker load overwrite a later back navigation', async () => {
+  let resolveRace;
+  const pendingRace = new Promise((resolve) => {
+    resolveRace = resolve;
+  });
+  api.sourceRace.mockResolvedValueOnce(archivedRace([AXEL_ENTRY])).mockReturnValueOnce(pendingRace);
+  api.history.mockResolvedValueOnce({
+    racerName: 'Axel Anderson',
+    races: [
+      {
+        sourceRaceId: 'livelaps:79103', raceName: 'Test Enduro', eventDate: '2026-07-12',
+        eventDateProvenance: 'source', provider: 'livelaps', overallPosition: 2, fieldSize: 45,
+        overallPercentile: 98, classPosition: 1, classSize: 12, classPercentile: 100, totalTimeSeconds: 7200
+      },
+      {
+        sourceRaceId: 'mototally:ECEA/Enduro/2026/6/O1', raceName: 'Pine Barrens', eventDate: '2026-07-19',
+        eventDateProvenance: 'source', provider: 'mototally', overallPosition: 4, fieldSize: 40,
+        overallPercentile: 92, classPosition: 2, classSize: 10, classPercentile: 90, totalTimeSeconds: 7300
+      }
+    ],
+    trends: { overallPercentiles: [98, 92], classPercentiles: [100, 90] }
+  });
+  history.replaceState({}, '', '/?race=livelaps%3A79103&id=4758874');
+
+  await import('../src/main.js?stale-picker');
+  await vi.waitFor(() => expect(document.querySelector('[data-slot="racePicker"]')).not.toBeNull());
+  const picker = document.querySelector('[data-slot="racePicker"]');
+  picker.value = 'mototally:ECEA/Enduro/2026/6/O1';
+  picker.dispatchEvent(new Event('change'));
+  document.querySelector('[data-slot="back"]').click();
+  resolveRace(archivedRace([AXEL_ENTRY]));
+
+  await vi.waitFor(() => expect(document.querySelector('[data-slot="participantSection"]')).not.toBeNull());
+  expect(document.querySelector('[data-slot="title"]')).toBeNull();
+});

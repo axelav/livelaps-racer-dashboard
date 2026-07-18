@@ -111,4 +111,18 @@ describe('history dashboard', () => {
 
     expect(container.querySelector('[data-slot="historyData"]').textContent).toBe(before);
   });
+
+  it('shows a safe empty state without rendering invalid trend charts', () => {
+    renderHistory(container, {
+      history: { racerName: 'Axel Anderson', races: [], trends: {} },
+      selectedSourceRaceId: null,
+      onSelectRace: vi.fn(),
+      onClear: vi.fn()
+    });
+
+    expect(container.textContent).toContain('No archived events yet.');
+    expect(container.querySelector('[data-slot="racePicker"]').disabled).toBe(true);
+    expect(container.querySelector('svg')).toBeNull();
+    expect(container.innerHTML).not.toContain('NaN');
+  });
 });

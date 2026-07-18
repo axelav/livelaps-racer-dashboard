@@ -58,6 +58,7 @@ function showSearch(options = {}) {
 }
 
 function showSearchDefault() {
+  ++requestId;
   history.pushState({}, '', window.location.pathname);
   showSearch({ race: activeRace });
 }
@@ -83,8 +84,6 @@ async function showDashboard(raceId, participantId, loadedRace, ingestInput, kno
       return;
     }
     const normalizedName = normalizeRacerName(totals.racer.fullName);
-    const racerHistory = knownHistory ?? (await archiveApi.history(normalizedName));
-    if (thisRequest !== requestId) return;
     saveRacerName(normalizedName);
     app.innerHTML = `
       <div class="viz-root">
@@ -96,25 +95,6 @@ async function showDashboard(raceId, participantId, loadedRace, ingestInput, kno
     `;
     const historyPanel = app.querySelector('[data-slot="historyPanel"]');
     const detailPanel = app.querySelector('[data-slot="detailPanel"]');
-    renderHistory(historyPanel, {
-      history: racerHistory,
-      selectedSourceRaceId: race.raceId,
-      onSelectRace: async (selectedRaceId) => {
-        if (selectedRaceId === race.raceId) return;
-        try {
-          const selectedRace = await loadArchivedRace(selectedRaceId);
-          const selectedRacer = selectedRace.allResults.find(
-            (entry) => normalizeRacerName(entry.fullName) === normalizedName
-          );
-          if (!selectedRacer) throw new Error("Couldn't find that racer in this archived race.");
-          await showDashboard(selectedRaceId, selectedRacer.id, selectedRace, undefined, racerHistory);
-        } catch (error) {
-          console.error(error);
-          window.alert(error.message || "Couldn't load that archived race.");
-        }
-      },
-      onClear: () => clearSavedRacerName()
-    });
     renderDashboard(detailPanel, {
       raceMeta: race.raceMeta,
       capturedAt: race.capturedAt,
@@ -126,6 +106,47 @@ async function showDashboard(raceId, participantId, loadedRace, ingestInput, kno
         await showDashboard(raceId, participantId, refreshedRace);
       }
     });
+
+    const renderRacerHistory = (racerHistory) => {
+      renderHistory(historyPanel, {
+        history: racerHistory,
+        selectedSourceRaceId: race.raceId,
+        onSelectRace: async (selectedRaceId) => {
+          if (selectedRaceId === race.raceId) return;
+          const pickerRequest = ++requestId;
+          try {
+            const selectedRace = await loadArchivedRace(selectedRaceId);
+            if (pickerRequest !== requestId) return;
+            const selectedRacer = selectedRace.allResults.find(
+              (entry) => normalizeRacerName(entry.fullName) === normalizedName
+            );
+            if (!selectedRacer) throw new Error("Couldn't find that racer in this archived race.");
+            await showDashboard(selectedRaceId, selectedRacer.id, selectedRace, undefined, racerHistory);
+          } catch (error) {
+            if (pickerRequest !== requestId) return;
+            console.error(error);
+            window.alert(error.message || "Couldn't load that archived race.");
+          }
+        },
+        onClear: () => clearSavedRacerName()
+      });
+    };
+
+    if (knownHistory) {
+      renderRacerHistory(knownHistory);
+    } else {
+      historyPanel.textContent = 'Loading history…';
+      archiveApi
+        .history(normalizedName)
+        .then((racerHistory) => {
+          if (thisRequest === requestId) renderRacerHistory(racerHistory);
+        })
+        .catch((error) => {
+          if (thisRequest !== requestId) return;
+          console.error(error);
+          historyPanel.textContent = 'History is unavailable. Race detail remains available.';
+        });
+    }
   } catch (error) {
     if (thisRequest !== requestId) return;
     console.error(error);
