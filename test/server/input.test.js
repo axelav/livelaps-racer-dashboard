@@ -26,6 +26,20 @@ describe('canonicalizeSourceInput', () => {
     expect(() => canonicalizeSourceInput('https://example.com/internal')).toThrow(/supported/);
   });
 
+  it('rejects a LiveLaps URL whose query only resembles a race path', () => {
+    expect(() =>
+      canonicalizeSourceInput('https://www.livelaps.com/nope?redirect=/race/79103')
+    ).toThrow(/supported/);
+  });
+
+  it('rejects a Moto-Tally URL whose query only resembles a results path', () => {
+    expect(() =>
+      canonicalizeSourceInput(
+        'https://www.moto-tally.com/nope?redirect=/ECEA/Enduro/Results.aspx/2026/6/O1/CS'
+      )
+    ).toThrow(/supported/);
+  });
+
   it('rejects non-URL text that only resembles a race path', () => {
     expect(() => canonicalizeSourceInput('anything/race/79103')).toThrow(/supported/);
   });
