@@ -16,6 +16,10 @@ _Avoid_: Live result, cached response
 A race as identified by one timing provider and that provider's race ID. Two providers' records remain distinct Source Races even when they describe the same real-world event.
 _Avoid_: Canonical event, merged race
 
+**Calendar metadata**:
+The source-published event date, location, and organizer/club associated with a Source Race. For Moto-Tally, it is resolved from the matching organization, discipline, year, and round entry in its series calendar.
+_Avoid_: Derived event, merged event data
+
 **Source artifact**:
 The unmodified API payload or source HTML from which a Race Snapshot is derived.
 _Avoid_: Raw cache, scrape output
