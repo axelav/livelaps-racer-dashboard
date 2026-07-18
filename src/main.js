@@ -9,7 +9,28 @@ let activeRace = null;
 
 function currentParams() {
   const params = new URLSearchParams(window.location.search);
-  return { raceId: params.get('race'), participantId: params.get('id') };
+  const requestedRaceId = params.get('race');
+  const legacyPathRaceId = window.location.pathname.match(
+    /\/race\/(?:results|filters|config)\/(\d+)(?:\/|$)/
+  )?.[1];
+  const legacyRaceId = /^\d+$/.test(requestedRaceId ?? '')
+    ? requestedRaceId
+    : legacyPathRaceId;
+
+  return {
+    raceId: legacyRaceId ? `livelaps:${legacyRaceId}` : requestedRaceId,
+    participantId: params.get('id'),
+    ingestInput: legacyRaceId
+  };
+}
+
+async function loadArchivedRace(raceId, ingestInput) {
+  try {
+    return archivedRaceFromResponse(await archiveApi.sourceRace(raceId));
+  } catch (error) {
+    if (!ingestInput || error.status !== 404) throw error;
+    return archivedRaceFromResponse(await archiveApi.ingest(ingestInput));
+  }
 }
 
 function deriveTotals(allResults, participantId) {
@@ -40,15 +61,20 @@ function showSearchDefault() {
   showSearch({ race: activeRace });
 }
 
-async function showDashboard(raceId, participantId, loadedRace) {
+async function showDashboard(raceId, participantId, loadedRace, ingestInput) {
   const thisRequest = ++requestId;
   try {
     const race =
       loadedRace && String(loadedRace.raceId) === String(raceId)
         ? loadedRace
-        : archivedRaceFromResponse(await archiveApi.sourceRace(raceId));
+        : await loadArchivedRace(raceId, ingestInput);
     if (thisRequest !== requestId) return;
     activeRace = race;
+    history.replaceState(
+      {},
+      '',
+      `?race=${encodeURIComponent(race.raceId)}&id=${encodeURIComponent(participantId)}`
+    );
     const totals = deriveTotals(race.allResults, participantId);
     if (!totals) {
       history.replaceState({}, '', window.location.pathname);
@@ -74,10 +100,10 @@ async function showDashboard(raceId, participantId, loadedRace) {
   }
 }
 
-async function showRaceSearch(raceId) {
+async function showRaceSearch(raceId, ingestInput) {
   const thisRequest = ++requestId;
   try {
-    const race = archivedRaceFromResponse(await archiveApi.sourceRace(raceId));
+    const race = await loadArchivedRace(raceId, ingestInput);
     if (thisRequest !== requestId) return;
     activeRace = race;
     history.replaceState({}, '', `?race=${encodeURIComponent(race.raceId)}`);
@@ -91,11 +117,11 @@ async function showRaceSearch(raceId) {
 }
 
 function route() {
-  const { raceId, participantId } = currentParams();
+  const { raceId, participantId, ingestInput } = currentParams();
   if (raceId && participantId) {
-    showDashboard(raceId, participantId);
+    showDashboard(raceId, participantId, undefined, ingestInput);
   } else if (raceId) {
-    showRaceSearch(raceId);
+    showRaceSearch(raceId, ingestInput);
   } else {
     showSearch({ race: activeRace });
   }
