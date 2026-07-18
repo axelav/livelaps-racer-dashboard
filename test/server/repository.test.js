@@ -116,6 +116,17 @@ describe('archive repository', () => {
     expect(db.prepare('SELECT COUNT(*) AS count FROM race_snapshots').get().count).toBe(2);
   });
 
+  it('does not replace the Current Snapshot with an older capture', () => {
+    const loaded = loadedRace();
+    archive.saveSnapshot(loaded, '2026-07-17T02:00:00.000Z');
+    archive.saveSnapshot(loaded, '2026-07-17T01:00:00.000Z');
+
+    expect(archive.getCurrentSnapshot('livelaps:79103').capturedAt).toBe(
+      '2026-07-17T02:00:00.000Z'
+    );
+    expect(db.prepare('SELECT COUNT(*) AS count FROM race_snapshots').get().count).toBe(2);
+  });
+
   it('round-trips compressed source artifacts', () => {
     const artifactText = '<html>source bytes 🏁</html>';
     archive.saveSnapshot(

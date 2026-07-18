@@ -70,7 +70,13 @@ export function createArchive(db) {
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
   const setCurrentSnapshot = db.prepare(
-    'UPDATE source_races SET current_snapshot_id = ? WHERE id = ?'
+    `UPDATE source_races
+     SET current_snapshot_id = ?
+     WHERE id = ?
+       AND (
+         current_snapshot_id IS NULL
+         OR (SELECT captured_at FROM race_snapshots WHERE id = current_snapshot_id) < ?
+       )`
   );
 
   const persistSnapshot = db.transaction((loaded, capturedAt, normalizedJson, artifactBlob) => {
@@ -133,7 +139,7 @@ export function createArchive(db) {
       }
     }
 
-    setCurrentSnapshot.run(snapshotId, sourceId);
+    setCurrentSnapshot.run(snapshotId, sourceId, capturedAt);
     return sourceRaceKey(sourceRace.provider, sourceRace.sourceRaceId);
   });
 
