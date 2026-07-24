@@ -225,12 +225,14 @@ export function renderDashboard(
 
   lineChart(slot('chartOverall'), {
     ariaLabel: 'Overall position by section',
+    clampMin: 1,
     labels: series.names,
     series: [{ name: 'Overall position', color: colorOverall, values: series.cumulativeOverallPositions }]
   });
 
   lineChart(slot('chartClass'), {
     ariaLabel: 'Class position by section',
+    clampMin: 1,
     labels: series.names,
     series: [{ name: 'Class position', color: colorClass, values: series.cumulativeClassPositions }]
   });
@@ -241,6 +243,7 @@ export function renderDashboard(
   ]);
   lineChart(slot('chartSection'), {
     ariaLabel: 'Cumulative position vs section-only rank',
+    clampMin: 1,
     labels: series.names,
     series: [
       { name: 'Cumulative overall position', color: colorOverall, values: series.cumulativeOverallPositions },
@@ -319,6 +322,7 @@ function renderPointsBreakdown(slot, subhead, racer, fieldSize, classSize, color
 
   lineChart(slot('chartOverall'), {
     ariaLabel: 'Overall position by check',
+    clampMin: 1,
     labels,
     xTick: checkTick,
     series: [{ name: 'Overall position', color: colors.overall, values: sections.map((s) => s.overallPosition) }]
@@ -326,6 +330,7 @@ function renderPointsBreakdown(slot, subhead, racer, fieldSize, classSize, color
 
   lineChart(slot('chartClass'), {
     ariaLabel: 'Class position by check',
+    clampMin: 1,
     labels,
     xTick: checkTick,
     series: [{ name: 'Class position', color: colors.class, values: sections.map((s) => s.classPosition) }]
@@ -345,6 +350,7 @@ function renderPointsBreakdown(slot, subhead, racer, fieldSize, classSize, color
     ]);
     lineChart(slot('chartSection'), {
       ariaLabel: 'Cumulative position vs timed-check rank',
+    clampMin: 1,
       labels: timedSections.map(({ s }) => s.sectionName),
       xTick: (k) => `C${timedSections[k].i + 1}`,
       series: [

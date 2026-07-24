@@ -116,14 +116,23 @@ export function lineChart(container, opts) {
   const dMin = Math.min(...allVals);
   const dMax = Math.max(...allVals);
   const pad = Math.max((dMax - dMin) * 0.25, 2);
-  const domain = niceTicks(dMin - pad, dMax + pad, 4);
+  // clampMin/clampMax keep the padded domain inside the value space (positions
+  // can't go below 1, percentiles beyond 0..100).
+  let lo = dMin - pad;
+  let hi = dMax + pad;
+  if (opts.clampMin != null) lo = Math.max(opts.clampMin, lo);
+  if (opts.clampMax != null) hi = Math.min(opts.clampMax, hi);
+  const domain = niceTicks(lo, hi, 4);
 
   const svg = el('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': opts.ariaLabel || '' });
   function xAt(i) {
     return plotL + (i / (n - 1)) * (plotR - plotL);
   }
   function yAt(v) {
-    return scaleY(v, domain.min, domain.max, plotT, plotB, true);
+    // invert defaults on: these charts mostly plot positions, where lower is
+    // better and belongs at the top. Pass invert: false for higher-is-better
+    // series (percentiles).
+    return scaleY(v, domain.min, domain.max, plotT, plotB, opts.invert !== false);
   }
 
   domain.ticks.forEach((t) => {

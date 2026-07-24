@@ -26,7 +26,8 @@ export function buildRacerHistory(entries) {
     classPosition: entry.classPosition,
     classSize: entry.classSize,
     classPercentile: toPercentile(entry.classPosition, entry.classSize),
-    totalTimeSeconds: entry.totalTimeSeconds
+    totalTimeSeconds: entry.totalTimeSeconds,
+    totalPoints: entry.entry?.totalPoints ?? null
   }));
 
   return {

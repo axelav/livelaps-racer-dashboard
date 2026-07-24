@@ -36,7 +36,8 @@ const history = {
       classPosition: 3,
       classSize: 10,
       classPercentile: 80,
-      totalTimeSeconds: 7412
+      totalTimeSeconds: null,
+      totalPoints: 50
     }
   ],
   trends: { overallPercentiles: [98, 80], classPercentiles: [100, 80] }
@@ -84,6 +85,8 @@ describe('history dashboard', () => {
     expect(container.textContent).toContain('Results ledger');
     expect(container.textContent).toContain('2 / 45');
     expect(container.textContent).toContain('1 / 12');
+    expect(container.textContent).toContain('2:00:34'); // time-scored race
+    expect(container.textContent).toContain('50 pts'); // points-scored race
 
     const picker = container.querySelector('[data-slot="racePicker"]');
     expect(picker.value).toBe('livelaps:79103');

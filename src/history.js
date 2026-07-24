@@ -75,7 +75,7 @@ export function renderHistory(
         <section class="history-ledger">
           <h3>Results ledger</h3>
           <table class="data-table">
-            <thead><tr><th>Date</th><th>Race</th><th>Source</th><th>Overall</th><th>Class</th><th>Time</th></tr></thead>
+            <thead><tr><th>Date</th><th>Race</th><th>Source</th><th>Overall</th><th>Class</th><th>Result</th></tr></thead>
             <tbody data-slot="ledger"></tbody>
           </table>
         </section>
@@ -103,9 +103,13 @@ export function renderHistory(
   }
 
   const labels = races.map((race) => race.eventDate ?? race.raceName);
+  // Percentiles are higher-is-better: plot them upward, bounded to 0..100.
   lineChart(slot('overallTrend'), {
     ariaLabel: 'Overall percentile across archived events',
     labels,
+    invert: false,
+    clampMin: 0,
+    clampMax: 100,
     series: [
       {
         name: 'Overall percentile',
@@ -117,6 +121,9 @@ export function renderHistory(
   lineChart(slot('classTrend'), {
     ariaLabel: 'Class percentile across archived events',
     labels,
+    invert: false,
+    clampMin: 0,
+    clampMax: 100,
     series: [
       {
         name: 'Class percentile',
@@ -135,7 +142,7 @@ export function renderHistory(
       sourceLabel(race.provider),
       `${race.overallPosition ?? '—'} / ${race.fieldSize ?? '—'}`,
       `${race.classPosition ?? '—'} / ${race.classSize ?? '—'}`,
-      formatDuration(race.totalTimeSeconds)
+      race.totalPoints != null ? `${race.totalPoints} pts` : formatDuration(race.totalTimeSeconds)
     ].forEach((value) => {
       const cell = document.createElement('td');
       cell.textContent = value;

@@ -94,4 +94,12 @@ describe('renderDashboard for a points-scored racer', () => {
     const sectionChart = c.querySelector('[data-slot="chartSection"]');
     expect(sectionChart.querySelector('svg')).not.toBeNull();
   });
+
+  it('never shows negative positions on chart axes', () => {
+    const c = render(3279244);
+    const ticks = Array.from(c.querySelectorAll('svg text.tick-label'))
+      .map((t) => Number(t.textContent))
+      .filter((n) => Number.isFinite(n));
+    expect(Math.min(...ticks)).toBeGreaterThanOrEqual(0);
+  });
 });
