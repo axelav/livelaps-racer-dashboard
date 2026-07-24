@@ -1,5 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { Window } from 'happy-dom';
+import { parseHTML } from 'linkedom';
 import { createSources } from '../../server/sources/index.js';
 import { MOTOTALLY_FIXTURE_HTML } from '../fixtures/mototally.fixture.js';
 
@@ -117,6 +120,39 @@ describe('server timing sources', () => {
       location: null,
       organizer: null
     });
+  });
+
+  it('parses points-scored Moto-Tally pages cleanly with the production linkedom parser', async () => {
+    // linkedom (unlike happy-dom) leaves Moto-Tally's unclosed brand span open and
+    // swallows the rest of the row into it; the sanitizer must run server-side too.
+    const foggyHtml = readFileSync(
+      fileURLToPath(new URL('../fixtures/foggy-mountain-o1.html', import.meta.url)),
+      'utf8'
+    );
+    const foggyUrl = 'https://www.moto-tally.com/ECEA/Enduro/Results.aspx/2026/8/O1/CS';
+    const fetchImpl = vi.fn(async (url) => {
+      if (url === foggyUrl) return responseText(foggyHtml);
+      if (url === MOTO_TALLY_CALENDAR_URL) return { ok: false, status: 503, text: async () => '' };
+      throw new Error(`Unexpected URL: ${url}`);
+    });
+    const sources = createSources({
+      fetchImpl,
+      parseHtml: (html) => parseHTML(html).document
+    });
+
+    const loaded = await sources.load(foggyUrl);
+
+    const axel = loaded.normalized.allResults.find((r) => r.fullName === 'AXEL ANDERSON');
+    expect(axel).toMatchObject({
+      brand: 'HUS',
+      className: 'A SR 40+',
+      scoring: 'points',
+      overallPosition: 47,
+      classPosition: 5,
+      totalPoints: 50
+    });
+    // stored artifact keeps the upstream HTML verbatim
+    expect(loaded.artifact.text).toBe(foggyHtml);
   });
 
   it('refreshes using the stored canonical URL', async () => {

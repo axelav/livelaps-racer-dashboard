@@ -5,7 +5,8 @@ import {
   parseOverallOptions,
   parseRaceName,
   parseResults,
-  pickContainingGroup
+  pickContainingGroup,
+  sanitizeHtml
 } from '../../src/mototally.js';
 
 const BASE_URL = 'https://www.moto-tally.com/';
@@ -22,7 +23,7 @@ async function fetchPage(url, { fetchImpl, parseHtml }) {
   const response = await fetchImpl(url);
   if (!response.ok) throw new Error(`Moto-Tally request failed: ${response.status} ${url}`);
   const text = await response.text();
-  return { text, doc: parseHtml(text) };
+  return { text, doc: parseHtml(sanitizeHtml(text)) };
 }
 
 async function resolveOverall(source, deps) {
