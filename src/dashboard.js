@@ -80,7 +80,7 @@ const TEMPLATE = `
       <section class="table-section">
         <h2 class="table-heading">Section-by-section data</h2>
         <table class="data-table" data-slot="table">
-          <thead>
+          <thead data-slot="tableHead">
             <tr>
               <th>Section</th>
               <th>Cumulative time</th>
@@ -156,19 +156,11 @@ export function renderDashboard(
   slot('eyebrow').textContent = raceMeta.raceName;
   slot('title').textContent = `${racer.fullName} — enduro breakdown`;
 
-  const series = deriveSectionSeries(racer);
-  const sectionCount = series.names.length;
-
   const subhead = slot('subhead');
   subhead.innerHTML = '';
   const boldBrand = document.createElement('b');
   boldBrand.textContent = `${racer.brand} #${racer.displayedNumber}`;
   subhead.appendChild(boldBrand);
-  subhead.appendChild(
-    document.createTextNode(
-      ` · Class ${racer.className} · finished in ${series.cumTimes[sectionCount - 1]} across ${sectionCount} timed sections`
-    )
-  );
 
   const overallPct = Math.round((racer.overallPosition / fieldSize) * 100);
   const statOverall = slot('statOverall');
@@ -187,6 +179,32 @@ export function renderDashboard(
   statClass.appendChild(classSmall);
   slot('statClassSub').textContent = racer.className;
 
+  const root = container.querySelector('.viz-root');
+  const styles = getComputedStyle(root);
+  const colorOverall = styles.getPropertyValue('--series-overall').trim();
+  const colorClass = styles.getPropertyValue('--series-class').trim();
+  const colorSection = styles.getPropertyValue('--series-section').trim();
+  const colorSpeed = styles.getPropertyValue('--series-speed').trim();
+  const colorGap = styles.getPropertyValue('--series-gap').trim();
+
+  if (racer.scoring === 'points') {
+    renderPointsBreakdown(slot, subhead, racer, fieldSize, classSize, {
+      overall: colorOverall,
+      class: colorClass,
+      section: colorSection,
+      gap: colorGap
+    });
+    return;
+  }
+
+  const series = deriveSectionSeries(racer);
+  const sectionCount = series.names.length;
+  subhead.appendChild(
+    document.createTextNode(
+      ` · Class ${racer.className} · finished in ${series.cumTimes[sectionCount - 1]} across ${sectionCount} timed sections`
+    )
+  );
+
   slot('statGapLeader').textContent = formatDuration(parseDuration(racer.overallBehindByLeader));
   slot('statGapLeaderSub').textContent = `behind class leader by ${formatDuration(parseDuration(racer.classBehindByLeader))}`;
 
@@ -204,14 +222,6 @@ export function renderDashboard(
 
   slot('overallCardSub').textContent = `Cumulative position among all ${fieldSize} finishers, after each section`;
   slot('classCardSub').textContent = `Cumulative position within ${racer.className} (${classSize} riders), after each section`;
-
-  const root = container.querySelector('.viz-root');
-  const styles = getComputedStyle(root);
-  const colorOverall = styles.getPropertyValue('--series-overall').trim();
-  const colorClass = styles.getPropertyValue('--series-class').trim();
-  const colorSection = styles.getPropertyValue('--series-section').trim();
-  const colorSpeed = styles.getPropertyValue('--series-speed').trim();
-  const colorGap = styles.getPropertyValue('--series-gap').trim();
 
   lineChart(slot('chartOverall'), {
     ariaLabel: 'Overall position by section',
@@ -272,6 +282,132 @@ export function renderDashboard(
       series.sectionOnlyClassRanks[i],
       Number.isFinite(series.avgSpeeds[i]) ? series.avgSpeeds[i].toFixed(3) : '—',
       series.gapAheadSeconds[i].toFixed(3)
+    ].forEach((val) => {
+      const td = document.createElement('td');
+      td.textContent = val;
+      tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  });
+}
+
+// Timekeeping enduros are scored in points dropped after key time, with raw
+// seconds recorded only at emergency checks (as the tiebreaker).
+function renderPointsBreakdown(slot, subhead, racer, fieldSize, classSize, colors) {
+  const { sections, checkCount, timedCheckCount } = racer;
+  const labels = sections.map((s) => s.sectionName);
+  const checkTick = (i) => `C${i + 1}`;
+
+  subhead.appendChild(
+    document.createTextNode(
+      ` · Class ${racer.className} · finished on ${racer.totalPoints} points (${racer.totalEmergencySeconds} emergency seconds) across ${checkCount} checks · ${timedCheckCount} timed`
+    )
+  );
+
+  if (racer.maxChk >= checkCount) {
+    slot('statGapLeader').textContent = `${racer.pointsBehindOverallLeader} pts`;
+    slot('statGapLeaderSub').textContent = `behind class leader by ${racer.pointsBehindClassLeader} pts`;
+  } else {
+    slot('statGapLeader').textContent = '—';
+    slot('statGapLeaderSub').textContent = `completed ${racer.maxChk} of ${checkCount} checks`;
+  }
+
+  slot('statSpeed').closest('.stat-tile').remove();
+
+  slot('overallCardSub').textContent = `Cumulative position among all ${fieldSize} finishers, after each check`;
+  slot('classCardSub').textContent = `Cumulative position within ${racer.className} (${classSize} riders), after each check`;
+
+  lineChart(slot('chartOverall'), {
+    ariaLabel: 'Overall position by check',
+    labels,
+    xTick: checkTick,
+    series: [{ name: 'Overall position', color: colors.overall, values: sections.map((s) => s.overallPosition) }]
+  });
+
+  lineChart(slot('chartClass'), {
+    ariaLabel: 'Class position by check',
+    labels,
+    xTick: checkTick,
+    series: [{ name: 'Class position', color: colors.class, values: sections.map((s) => s.classPosition) }]
+  });
+
+  const timedSections = sections
+    .map((s, i) => ({ s, i }))
+    .filter(({ s }) => s.timed && s.publishedPlace != null);
+  if (timedSections.length >= 2) {
+    const sectionCard = slot('chartSection').closest('.card');
+    sectionCard.querySelector('h2').textContent = 'Cumulative standing vs. that check alone';
+    sectionCard.querySelector('.card-sub').textContent =
+      "Where they stood overall vs. how that timed check's seconds alone ranked";
+    buildLegend(slot('legendSection'), [
+      { name: 'Cumulative overall position', color: colors.overall },
+      { name: "That check's rank alone", color: colors.section }
+    ]);
+    lineChart(slot('chartSection'), {
+      ariaLabel: 'Cumulative position vs timed-check rank',
+      labels: timedSections.map(({ s }) => s.sectionName),
+      xTick: (k) => `C${timedSections[k].i + 1}`,
+      series: [
+        {
+          name: 'Cumulative overall position',
+          color: colors.overall,
+          values: timedSections.map(({ s }) => s.overallPosition)
+        },
+        {
+          name: "Timed check's rank alone",
+          color: colors.section,
+          values: timedSections.map(({ s }) => s.publishedPlace)
+        }
+      ]
+    });
+  } else {
+    slot('chartSection').closest('.card').remove();
+  }
+
+  slot('chartSpeed').closest('.card').remove();
+
+  const gapCard = slot('chartGap').closest('.card');
+  gapCard.querySelector('h2').textContent = 'Points dropped per check';
+  gapCard.querySelector('.card-sub').textContent = 'Route and emergency checks — lower is better';
+  barChart(slot('chartGap'), {
+    ariaLabel: 'Points dropped by check',
+    labels,
+    xTick: checkTick,
+    values: sections.map((s) => s.points ?? 0),
+    color: colors.gap,
+    label: 'Points',
+    format: (v) => String(v)
+  });
+
+  const thead = slot('tableHead');
+  thead.innerHTML = '';
+  const headRow = document.createElement('tr');
+  [
+    'Check',
+    'Points',
+    'Cumulative points',
+    'Emergency time',
+    'Check rank (overall)',
+    'Overall position',
+    'Class position'
+  ].forEach((label) => {
+    const th = document.createElement('th');
+    th.textContent = label;
+    headRow.appendChild(th);
+  });
+  thead.appendChild(headRow);
+
+  const tbody = slot('tableBody');
+  sections.forEach((s) => {
+    const tr = document.createElement('tr');
+    [
+      s.sectionName,
+      s.points ?? '—',
+      s.cumPoints,
+      s.seconds != null ? formatDuration(s.seconds) : '—',
+      s.publishedPlace ?? '—',
+      s.overallPosition,
+      s.classPosition
     ].forEach((val) => {
       const td = document.createElement('td');
       td.textContent = val;

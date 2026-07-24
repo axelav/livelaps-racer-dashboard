@@ -138,7 +138,7 @@ export function lineChart(container, opts) {
 
   labels.forEach((_, i) => {
     const lbl = el('text', { class: 'tick-label', x: xAt(i), y: H - 8, 'text-anchor': 'middle' });
-    lbl.textContent = `S${i + 1}`;
+    lbl.textContent = opts.xTick ? opts.xTick(i) : `S${i + 1}`;
     svg.appendChild(lbl);
   });
 
@@ -249,7 +249,7 @@ export function barChart(container, opts) {
     svg.appendChild(cap);
 
     const xl = el('text', { class: 'tick-label', x: cx, y: H - 8, 'text-anchor': 'middle' });
-    xl.textContent = `S${i + 1}`;
+    xl.textContent = opts.xTick ? opts.xTick(i) : `S${i + 1}`;
     svg.appendChild(xl);
 
     function show() {
