@@ -27,6 +27,13 @@ export function parseMotoTallyUrl(input) {
 const FIXED_COLS = 8; // EventPlace, AMA#, Row, Name, Club, Sponsors, Brand, Class
 const TRAILING_COLS = 2; // MaxChk, TotalTime
 
+// Moto-Tally ships brand cells like `<span class='bb Beta'>BET</span` (no closing
+// `>`). Browsers swallow the following `</td>` during error recovery, merging the
+// rest of the row into the brand cell. Close the span before parsing.
+export function sanitizeHtml(html) {
+  return html.replace(/<\/span(?=<)/gi, '</span>');
+}
+
 function dataRows(doc) {
   const table = doc.querySelector('#mtR_gvResults');
   if (!table) return [];
@@ -46,6 +53,18 @@ function parseCheckCell(td) {
   const m = text.match(/^(\d+:\d{2})\s*\((\d+)\)$/);
   if (!m) return null;
   return { seconds: parseClock(m[1]), publishedPlace: Number(m[2]) };
+}
+
+const POINTS_TOTAL_PATTERN = /^(\d+)\/(\d+)$/;
+
+// Points-format check cells: "7" (route check, points dropped), "11/656 (53)"
+// (emergency check: points/seconds and published place), blank (never reached).
+function parsePointsCell(td) {
+  const text = td.textContent.replace(/\u00a0/g, ' ').trim();
+  if (/^\d+$/.test(text)) return { points: Number(text), seconds: null, publishedPlace: null };
+  const m = text.match(/^(\d+)\/(\d+)\s*\((\d+)\)$/);
+  if (!m) return null;
+  return { points: Number(m[1]), seconds: Number(m[2]), publishedPlace: Number(m[3]) };
 }
 
 export function parseRaceName(doc) {
@@ -72,12 +91,42 @@ export function pickContainingGroup(summaries, classAmaSet) {
   return containing.reduce((best, s) => (s.amaSet.size > best.amaSet.size ? s : best));
 }
 
+function parseResultsPoints(rows) {
+  return rows.map((tr) => {
+    const cells = cellsOf(tr);
+    const checkEnd = cells.length - TRAILING_COLS; // exclusive
+    const checks = [];
+    for (let c = FIXED_COLS; c < checkEnd; c++) checks.push(parsePointsCell(cells[c]));
+    const totalMatch = cells[cells.length - 1].textContent.trim().match(POINTS_TOTAL_PATTERN);
+    return {
+      id: Number(cells[1].textContent.trim()),
+      fullName: cells[3].textContent.trim(),
+      displayedNumber: cells[2].textContent.trim(),
+      brand: (cells[6].querySelector('span')?.textContent ?? cells[6].textContent).replace(/<.*$/s, '').trim(),
+      className: cells[7].textContent.trim(),
+      overallPosition: Number(cells[0].textContent.trim()),
+      scoring: 'points',
+      maxChk: Number(cells[cells.length - 2].textContent.trim()),
+      totalPoints: totalMatch ? Number(totalMatch[1]) : null,
+      totalEmergencySeconds: totalMatch ? Number(totalMatch[2]) : null,
+      checks
+    };
+  });
+}
+
 export function parseResults(doc) {
   const rows = dataRows(doc);
   if (rows.length === 0) return [];
 
-  // Timed columns = check columns where the winner (first data row) has a time.
   const winnerCells = cellsOf(rows[0]);
+
+  // Timekeeping enduros total "points/emergency seconds" (e.g. "25/599");
+  // sprint enduros total a clock time (e.g. "5:00").
+  if (POINTS_TOTAL_PATTERN.test(winnerCells[winnerCells.length - 1].textContent.trim())) {
+    return parseResultsPoints(rows);
+  }
+
+  // Timed columns = check columns where the winner (first data row) has a time.
   const checkStart = FIXED_COLS;
   const checkEnd = winnerCells.length - TRAILING_COLS; // exclusive
   const timedCols = [];
@@ -101,7 +150,122 @@ export function parseResults(doc) {
   });
 }
 
+// Official timekeeping-enduro ordering (validated against published ECEA
+// results): most checks completed, then fewest points, then fewest emergency
+// seconds.
+function betterScore(a, b) {
+  if (a.completed !== b.completed) return a.completed > b.completed;
+  if (a.points !== b.points) return a.points < b.points;
+  return a.seconds < b.seconds;
+}
+
+function deriveStandingsPoints(rawRecords) {
+  const n = rawRecords.length;
+  const checkCount = rawRecords[0]?.checks.length ?? 0;
+  if (checkCount === 0) return [];
+
+  // Per rider, per check: checks reached, cumulative points, cumulative emergency seconds.
+  const cum = rawRecords.map((r) => {
+    const out = [];
+    let completed = 0;
+    let points = 0;
+    let seconds = 0;
+    for (let i = 0; i < checkCount; i++) {
+      const c = r.checks[i];
+      if (c != null) {
+        completed += 1;
+        points += c.points;
+        if (c.seconds != null) seconds += c.seconds;
+      }
+      out.push({ completed, points, seconds });
+    }
+    return out;
+  });
+
+  // A check is "timed" (emergency check) if any rider has seconds recorded there.
+  const timedCheck = Array.from({ length: checkCount }, (_, si) =>
+    rawRecords.some((r) => r.checks[si]?.seconds != null)
+  );
+
+  const positionAt = (si, ri, sameClass) => {
+    const me = cum[ri][si];
+    let pos = 1;
+    for (let j = 0; j < n; j++) {
+      if (j === ri) continue;
+      if (sameClass && rawRecords[j].className !== rawRecords[ri].className) continue;
+      if (betterScore(cum[j][si], me)) pos++;
+    }
+    return pos;
+  };
+
+  const last = checkCount - 1;
+
+  // Final class position: same comparator, but exact dead heats (possible —
+  // the published tiebreak comes from the rulebook, not the table) defer to
+  // the published overall place.
+  const finalClassPosition = (ri) => {
+    const me = cum[ri][last];
+    let pos = 1;
+    for (let j = 0; j < n; j++) {
+      if (j === ri) continue;
+      if (rawRecords[j].className !== rawRecords[ri].className) continue;
+      const other = cum[j][last];
+      const tie =
+        other.completed === me.completed && other.points === me.points && other.seconds === me.seconds;
+      if (betterScore(other, me) || (tie && rawRecords[j].overallPosition < rawRecords[ri].overallPosition)) {
+        pos++;
+      }
+    }
+    return pos;
+  };
+
+  let overallLeader = cum[0][last];
+  for (let j = 1; j < n; j++) {
+    if (betterScore(cum[j][last], overallLeader)) overallLeader = cum[j][last];
+  }
+  const classLeaders = new Map();
+  rawRecords.forEach((r, ri) => {
+    const best = classLeaders.get(r.className);
+    if (!best || betterScore(cum[ri][last], best)) classLeaders.set(r.className, cum[ri][last]);
+  });
+
+  return rawRecords.map((r, ri) => {
+    const sections = r.checks.map((c, si) => ({
+      sectionName: `Check ${si + 1}`,
+      timed: timedCheck[si],
+      points: c?.points ?? null,
+      seconds: c?.seconds ?? null,
+      publishedPlace: c?.publishedPlace ?? null,
+      cumPoints: cum[ri][si].points,
+      cumSeconds: cum[ri][si].seconds,
+      overallPosition: positionAt(si, ri, false),
+      classPosition: positionAt(si, ri, true)
+    }));
+
+    return {
+      id: r.id,
+      fullName: r.fullName,
+      displayedNumber: r.displayedNumber,
+      brand: r.brand,
+      className: r.className,
+      overallPosition: r.overallPosition,
+      classPosition: finalClassPosition(ri),
+      scoring: 'points',
+      maxChk: r.maxChk,
+      checkCount,
+      timedCheckCount: timedCheck.filter(Boolean).length,
+      totalPoints: r.totalPoints,
+      totalEmergencySeconds: r.totalEmergencySeconds,
+      pointsBehindOverallLeader: cum[ri][last].points - overallLeader.points,
+      pointsBehindClassLeader: cum[ri][last].points - classLeaders.get(r.className).points,
+      avgSpeedTotal: null,
+      sections
+    };
+  });
+}
+
 export function deriveStandings(rawRecords) {
+  if (rawRecords[0]?.scoring === 'points') return deriveStandingsPoints(rawRecords);
   const n = rawRecords.length;
   const sectionCount = rawRecords[0]?.sectionTimes.length ?? 0;
 
@@ -209,7 +373,7 @@ async function fetchDoc(path) {
   const response = await fetch(PROXY_PREFIX + path);
   if (!response.ok) throw new Error(`Moto-Tally proxy request failed: ${response.status} ${path}`);
   const html = await response.text();
-  return new DOMParser().parseFromString(html, 'text/html');
+  return new DOMParser().parseFromString(sanitizeHtml(html), 'text/html');
 }
 
 function descriptorToRaceId({ org, discipline, year, round, group }) {
