@@ -150,10 +150,12 @@ it('changes only race detail when a history race is selected', async () => {
   history.replaceState({}, '', '/?race=livelaps%3A79103&id=4758874');
 
   await import('../src/main.js?history-picker');
-  await vi.waitFor(() => expect(document.querySelector('[data-slot="racePicker"]')).not.toBeNull());
-  const picker = document.querySelector('[data-slot="racePicker"]');
-  picker.value = 'mototally:ECEA/Enduro/2026/6/O1';
-  picker.dispatchEvent(new Event('change'));
+  const pineBarrens = () =>
+    Array.from(document.querySelectorAll('.ledger-race-link')).find(
+      (link) => link.textContent === 'Pine Barrens'
+    );
+  await vi.waitFor(() => expect(pineBarrens()).toBeTruthy());
+  pineBarrens().click();
 
   await vi.waitFor(() => expect(api.sourceRace).toHaveBeenCalledWith('mototally:ECEA/Enduro/2026/6/O1'));
   expect(api.history).toHaveBeenCalledTimes(1);
@@ -202,10 +204,12 @@ it('does not let an older picker load overwrite a later back navigation', async 
   history.replaceState({}, '', '/?race=livelaps%3A79103&id=4758874');
 
   await import('../src/main.js?stale-picker');
-  await vi.waitFor(() => expect(document.querySelector('[data-slot="racePicker"]')).not.toBeNull());
-  const picker = document.querySelector('[data-slot="racePicker"]');
-  picker.value = 'mototally:ECEA/Enduro/2026/6/O1';
-  picker.dispatchEvent(new Event('change'));
+  const pineBarrens = () =>
+    Array.from(document.querySelectorAll('.ledger-race-link')).find(
+      (link) => link.textContent === 'Pine Barrens'
+    );
+  await vi.waitFor(() => expect(pineBarrens()).toBeTruthy());
+  pineBarrens().click();
   document.querySelector('[data-slot="home"]').click();
   resolveRace(archivedRace([AXEL_ENTRY]));
 

@@ -112,25 +112,6 @@ body {
 .ledger-race-link:hover {
   text-decoration-color: currentColor;
 }
-.history-picker {
-  align-items: center;
-  display: flex;
-  gap: 8px;
-  margin: 18px 0;
-}
-.history-picker label {
-  color: var(--text-secondary);
-  font-size: 13px;
-}
-.history-picker select {
-  background: var(--surface-1);
-  border: 1px solid var(--border);
-  border-radius: 7px;
-  color: var(--text-primary);
-  font: inherit;
-  max-width: 100%;
-  padding: 7px 9px;
-}
 .history-trends {
   display: grid;
   gap: 16px;
@@ -138,6 +119,13 @@ body {
 }
 .history-ledger {
   margin-top: 20px;
+}
+.history-ledger tr.is-selected td {
+  color: var(--text-primary);
+  font-weight: 650;
+}
+.history-ledger tr.is-selected td:first-child {
+  box-shadow: inset 2px 0 0 var(--series-overall);
 }
 
 .masthead {
@@ -559,10 +547,6 @@ table.data-table th {
   }
   .history-trends {
     grid-template-columns: 1fr;
-  }
-  .history-picker {
-    align-items: flex-start;
-    flex-direction: column;
   }
   .race-actions {
     align-items: flex-start;

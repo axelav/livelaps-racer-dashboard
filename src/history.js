@@ -34,12 +34,7 @@ export function renderHistory(container, { history, selectedSourceRaceId, onSele
         <div>
           <p class="eyebrow">History dashboard</p>
           <h2 data-slot="racerName"></h2>
-          <p class="card-sub">Every archived event matching this racer name.</p>
         </div>
-      </div>
-      <div class="history-picker">
-        <label for="race-picker">Race detail</label>
-        <select id="race-picker" data-slot="racePicker"></select>
       </div>
       <div data-slot="historyData">
         <div class="history-trends">
@@ -67,27 +62,27 @@ export function renderHistory(container, { history, selectedSourceRaceId, onSele
 
   const slot = (name) => container.querySelector(`[data-slot="${name}"]`);
   slot('racerName').textContent = history.racerName ?? 'Racer history';
-  const picker = slot('racePicker');
-  races.forEach((race) => {
-    const option = document.createElement('option');
-    option.value = race.sourceRaceId;
-    option.selected = race.sourceRaceId === selectedSourceRaceId;
-    option.textContent = `${raceDate(race)} — ${race.raceName} (${sourceLabel(race.provider)})`;
-    picker.appendChild(option);
-  });
-  picker.addEventListener('change', () => onSelectRace(picker.value));
 
   if (races.length === 0) {
-    picker.disabled = true;
     slot('historyData').textContent = 'No archived events yet.';
     return;
   }
 
-  const labels = races.map((race) => race.eventDate ?? race.raceName);
+  // Tooltip titles carry the full story; axis ticks compress to short dates.
+  const labels = races.map((race) =>
+    race.eventDate ? `${race.eventDate} — ${race.raceName}` : race.raceName
+  );
+  const dateTick = (i) => {
+    const date = races[i].eventDate;
+    if (!date) return `#${i + 1}`;
+    const [, month, day] = date.split('-');
+    return `${Number(month)}/${Number(day)}`;
+  };
   // Percentiles are higher-is-better: plot them upward, bounded to 0..100.
   lineChart(slot('overallTrend'), {
     ariaLabel: 'Overall percentile across archived events',
     labels,
+    xTick: dateTick,
     invert: false,
     clampMin: 0,
     clampMax: 100,
@@ -102,6 +97,7 @@ export function renderHistory(container, { history, selectedSourceRaceId, onSele
   lineChart(slot('classTrend'), {
     ariaLabel: 'Class percentile across archived events',
     labels,
+    xTick: dateTick,
     invert: false,
     clampMin: 0,
     clampMax: 100,
@@ -117,6 +113,8 @@ export function renderHistory(container, { history, selectedSourceRaceId, onSele
   const ledger = slot('ledger');
   races.forEach((race) => {
     const row = document.createElement('tr');
+    const isSelected = race.sourceRaceId === selectedSourceRaceId;
+    if (isSelected) row.className = 'is-selected';
     [
       raceDate(race),
       race,
@@ -127,12 +125,17 @@ export function renderHistory(container, { history, selectedSourceRaceId, onSele
     ].forEach((value) => {
       const cell = document.createElement('td');
       if (value === race) {
-        const link = document.createElement('button');
-        link.type = 'button';
-        link.className = 'ledger-race-link';
-        link.textContent = race.raceName;
-        link.addEventListener('click', () => onSelectRace(race.sourceRaceId));
-        cell.appendChild(link);
+        // the selected race isn't a link — it's what's already on screen
+        if (isSelected) {
+          cell.textContent = race.raceName;
+        } else {
+          const link = document.createElement('button');
+          link.type = 'button';
+          link.className = 'ledger-race-link';
+          link.textContent = race.raceName;
+          link.addEventListener('click', () => onSelectRace(race.sourceRaceId));
+          cell.appendChild(link);
+        }
       } else {
         cell.textContent = value;
       }

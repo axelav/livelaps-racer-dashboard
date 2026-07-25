@@ -45,13 +45,11 @@ describe('history dashboard', () => {
     container = document.createElement('div');
   });
 
-  it('renders percentile trends, chronological ledger, and a race detail picker', () => {
-    const onSelectRace = vi.fn();
-
+  it('renders percentile trends and a chronological ledger with the current race highlighted', () => {
     renderHistory(container, {
       history,
       selectedSourceRaceId: 'livelaps:79103',
-      onSelectRace
+      onSelectRace: vi.fn()
     });
 
     expect(container.textContent).toContain('Overall percentile');
@@ -62,11 +60,11 @@ describe('history dashboard', () => {
     expect(container.textContent).toContain('2:00:34'); // time-scored race
     expect(container.textContent).toContain('50 pts'); // points-scored race
 
-    const picker = container.querySelector('[data-slot="racePicker"]');
-    expect(picker.value).toBe('livelaps:79103');
-    picker.value = 'mototally:ECEA/Enduro/2026/6/O1';
-    picker.dispatchEvent(new Event('change'));
-    expect(onSelectRace).toHaveBeenCalledWith('mototally:ECEA/Enduro/2026/6/O1');
+    // the viewed race is highlighted, not a link; the rest are links
+    const selected = container.querySelector('[data-slot="ledger"] tr.is-selected');
+    expect(selected.textContent).toContain('Summer Enduro');
+    expect(selected.querySelector('button')).toBeNull();
+    expect(container.querySelectorAll('[data-slot="ledger"] button')).toHaveLength(1);
   });
 
   it('selects a race when its ledger row is clicked, same as the picker', () => {
@@ -82,22 +80,6 @@ describe('history dashboard', () => {
     expect(onSelectRace).toHaveBeenCalledWith('mototally:ECEA/Enduro/2026/6/O1');
   });
 
-  it('keeps trend and ledger data stable when the detail picker changes', () => {
-    const onSelectRace = vi.fn();
-    renderHistory(container, {
-      history,
-      selectedSourceRaceId: 'livelaps:79103',
-      onSelectRace
-    });
-    const before = container.querySelector('[data-slot="historyData"]').textContent;
-
-    const picker = container.querySelector('[data-slot="racePicker"]');
-    picker.value = 'mototally:ECEA/Enduro/2026/6/O1';
-    picker.dispatchEvent(new Event('change'));
-
-    expect(container.querySelector('[data-slot="historyData"]').textContent).toBe(before);
-  });
-
   it('shows a safe empty state without rendering invalid trend charts', () => {
     renderHistory(container, {
       history: { racerName: 'Axel Anderson', races: [], trends: {} },
@@ -106,7 +88,6 @@ describe('history dashboard', () => {
     });
 
     expect(container.textContent).toContain('No archived events yet.');
-    expect(container.querySelector('[data-slot="racePicker"]').disabled).toBe(true);
     expect(container.querySelector('svg')).toBeNull();
     expect(container.innerHTML).not.toContain('NaN');
   });
