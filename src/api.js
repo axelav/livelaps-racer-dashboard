@@ -37,6 +37,7 @@ export function archivedRaceFromResponse({ sourceRace, snapshot }) {
 
 export const archiveApi = {
   search: (query) => get(`/api/archive?q=${encodeURIComponent(query)}`),
+  racers: (query) => get(`/api/racers?q=${encodeURIComponent(query)}`),
   ingest: (input) => post('/api/archive/ingest', { input }),
   refresh: (id) => post(`/api/source-races/${encodeURIComponent(id)}/refresh`),
   sourceRace: (id) => get(`/api/source-races/${encodeURIComponent(id)}`),

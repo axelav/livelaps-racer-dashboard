@@ -208,6 +208,30 @@ export function createArchive(db) {
         .map((row) => ({ ...mapSourceRace(row), capturedAt: row.captured_at }));
     },
 
+    findRacers(query, limit = 20) {
+      const normalized = normalizeRacerName(String(query ?? ''));
+      if (!normalized) return [];
+      return db
+        .prepare(`
+          SELECT re.normalized_name, MAX(re.full_name) AS full_name, COUNT(*) AS race_count
+          FROM race_entries re
+          JOIN race_snapshots rs ON rs.id = re.snapshot_id
+          JOIN source_races sr
+            ON sr.id = rs.source_race_id
+           AND sr.current_snapshot_id = rs.id
+          WHERE re.normalized_name LIKE ?
+          GROUP BY re.normalized_name
+          ORDER BY race_count DESC, re.normalized_name
+          LIMIT ?
+        `)
+        .all(`%${normalized}%`, limit)
+        .map((row) => ({
+          normalizedName: row.normalized_name,
+          fullName: row.full_name,
+          raceCount: row.race_count
+        }));
+    },
+
     findHistory(normalizedName) {
       return db
         .prepare(`

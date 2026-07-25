@@ -143,6 +143,10 @@ export function createApp({
     res.json({ races });
   });
 
+  app.get('/api/racers', (req, res) => {
+    res.json({ racers: archive.findRacers(String(req.query.q ?? '')) });
+  });
+
   app.get('/api/history/:normalizedName', (req, res) => {
     const entries = archive.findHistory(normalizeRacerName(req.params.normalizedName));
     res.json(buildRacerHistory(entries));

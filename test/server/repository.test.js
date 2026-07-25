@@ -214,6 +214,27 @@ describe('archive repository', () => {
     ]);
   });
 
+  it('finds racers by partial name across current snapshots only', () => {
+    archive.saveSnapshot(loadedRace(), CAPTURED_AT);
+    archive.saveSnapshot(
+      loadedRace({
+        provider: 'mototally',
+        sourceRaceId: 'ECEA/Enduro/2026/6/O1',
+        artifactText: '<html />'
+      }),
+      '2026-07-17T00:05:00.000Z'
+    );
+
+    const racers = archive.findRacers('axel');
+    expect(racers).toEqual([
+      { normalizedName: 'axel anderson', fullName: 'Áxel-Anderson', raceCount: 2 }
+    ]);
+    // diacritics and punctuation in the query normalize away too
+    expect(archive.findRacers('ÁXEL-and')).toHaveLength(1);
+    expect(archive.findRacers('nobody')).toEqual([]);
+    expect(archive.findRacers('')).toEqual([]);
+  });
+
   it('returns only matching current entries in event-date order', () => {
     archive.saveSnapshot(
       loadedRace({

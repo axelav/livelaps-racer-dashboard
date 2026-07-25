@@ -15,9 +15,20 @@ const TEMPLATE = `
       </div>
 
       <div data-slot="archiveSection">
+        <form data-slot="racerForm" class="race-form">
+          <input
+            type="search"
+            data-slot="racerSearchInput"
+            placeholder="Search riders across all archived races"
+            autocomplete="off"
+          />
+        </form>
+        <p class="form-error" data-slot="racerSearchError" role="alert" hidden></p>
+        <ul class="participant-list" data-slot="racerSearchList"></ul>
+
+        <h2 class="section-heading">Archived races</h2>
         <form data-slot="raceForm" class="race-form">
-          <input type="search" data-slot="raceInput" placeholder="Search archived races" autocomplete="off" />
-          <button type="submit">Search archive</button>
+          <input type="search" data-slot="raceInput" placeholder="Filter archived races" autocomplete="off" />
         </form>
         <p class="form-error" data-slot="raceError" role="alert" hidden></p>
         <ul class="archive-list" data-slot="archiveList"></ul>
@@ -53,7 +64,7 @@ function errorMessage(error, fallback) {
 
 export function renderSearch(
   container,
-  { prefillRaceInput, race, notice, onSelect, api = archiveApi } = {}
+  { prefillRaceInput, race, notice, onSelect, onSelectRacer, api = archiveApi, debounceMs = 200 } = {}
 ) {
   container.innerHTML = TEMPLATE;
   const slot = (name) => container.querySelector(`[data-slot="${name}"]`);
@@ -134,13 +145,20 @@ export function renderSearch(
     });
   }
 
+  // Search-as-you-type: catalog queries are cheap, but debounce keystrokes and
+  // let requestId drop any response that arrives out of order.
+  function debounced(fn) {
+    let timer = null;
+    return (...args) => {
+      clearTimeout(timer);
+      timer = setTimeout(() => fn(...args), debounceMs);
+    };
+  }
+
   async function searchCatalog(query) {
     const thisRequest = ++requestId;
     const errorEl = slot('raceError');
-    const submitButton = slot('raceForm').querySelector('button[type="submit"]');
     errorEl.hidden = true;
-    submitButton.disabled = true;
-    submitButton.textContent = 'Searching…';
     try {
       const { races } = await api.search(query);
       if (thisRequest !== requestId) return;
@@ -150,17 +168,63 @@ export function renderSearch(
       console.error(error);
       errorEl.textContent = errorMessage(error, "Couldn't search the race archive.");
       errorEl.hidden = false;
-    } finally {
-      if (thisRequest === requestId) {
-        submitButton.disabled = false;
-        submitButton.textContent = 'Search archive';
-      }
     }
   }
 
+  const searchCatalogDebounced = debounced(searchCatalog);
+  slot('raceInput').addEventListener('input', (event) => searchCatalogDebounced(event.target.value));
   slot('raceForm').addEventListener('submit', (event) => {
     event.preventDefault();
     searchCatalog(slot('raceInput').value);
+  });
+
+  function renderRacerMatches(racers) {
+    const list = slot('racerSearchList');
+    list.innerHTML = '';
+    racers.forEach((racer) => {
+      const item = document.createElement('li');
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.textContent = `${racer.fullName} · ${racer.raceCount} ${racer.raceCount === 1 ? 'race' : 'races'}`;
+      button.addEventListener('click', () => onSelectRacer?.(racer.normalizedName, racer.fullName));
+      item.appendChild(button);
+      list.appendChild(item);
+    });
+  }
+
+  async function searchRacers(query) {
+    const thisRequest = ++requestId;
+    const errorEl = slot('racerSearchError');
+    errorEl.hidden = true;
+    if (!query.trim()) {
+      slot('racerSearchList').innerHTML = '';
+      return;
+    }
+    try {
+      const { racers } = await api.racers(query);
+      if (thisRequest !== requestId) return;
+      if (racers.length === 0) {
+        errorEl.textContent = `No riders match '${query}' in the archive.`;
+        errorEl.hidden = false;
+        slot('racerSearchList').innerHTML = '';
+        return;
+      }
+      renderRacerMatches(racers);
+    } catch (error) {
+      if (thisRequest !== requestId) return;
+      console.error(error);
+      errorEl.textContent = errorMessage(error, "Couldn't search riders.");
+      errorEl.hidden = false;
+    }
+  }
+
+  const searchRacersDebounced = debounced(searchRacers);
+  slot('racerSearchInput').addEventListener('input', (event) =>
+    searchRacersDebounced(event.target.value)
+  );
+  slot('racerForm').addEventListener('submit', (event) => {
+    event.preventDefault();
+    searchRacers(slot('racerSearchInput').value);
   });
 
   slot('showIngest').addEventListener('click', () => {

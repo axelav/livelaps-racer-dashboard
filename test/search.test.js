@@ -56,6 +56,55 @@ describe('archive-first race search', () => {
     expect(providerLookup).not.toHaveBeenCalled();
   });
 
+  it('searches riders as you type and reports selections', async () => {
+    const container = document.createElement('div');
+    const api = {
+      search: vi.fn().mockResolvedValue({ races: [] }),
+      racers: vi
+        .fn()
+        .mockResolvedValue({ racers: [{ normalizedName: 'donovan marvin', fullName: 'DONOVAN MARVIN', raceCount: 7 }] }),
+      sourceRace: vi.fn(),
+      ingest: vi.fn()
+    };
+    const onSelectRacer = vi.fn();
+
+    renderSearch(container, { api, onSelect: vi.fn(), onSelectRacer, debounceMs: 0 });
+
+    const input = container.querySelector('[data-slot="racerSearchInput"]');
+    input.value = 'marv';
+    input.dispatchEvent(new Event('input'));
+
+    await vi.waitFor(() => expect(api.racers).toHaveBeenCalledWith('marv'));
+    await vi.waitFor(() =>
+      expect(container.querySelector('[data-slot="racerSearchList"] button')).not.toBeNull()
+    );
+    const button = container.querySelector('[data-slot="racerSearchList"] button');
+    expect(button.textContent).toBe('DONOVAN MARVIN · 7 races');
+    button.click();
+    expect(onSelectRacer).toHaveBeenCalledWith('donovan marvin', 'DONOVAN MARVIN');
+  });
+
+  it('filters the race catalog as you type without a submit', async () => {
+    const container = document.createElement('div');
+    const api = {
+      search: vi.fn().mockResolvedValue({ races: [archivedRace.sourceRace] }),
+      racers: vi.fn().mockResolvedValue({ racers: [] }),
+      sourceRace: vi.fn(),
+      ingest: vi.fn()
+    };
+
+    renderSearch(container, { api, onSelect: vi.fn(), debounceMs: 0 });
+    await vi.waitFor(() => expect(api.search).toHaveBeenCalledWith(''));
+
+    const input = container.querySelector('[data-slot="raceInput"]');
+    input.value = 'foggy';
+    input.dispatchEvent(new Event('input'));
+
+    await vi.waitFor(() => expect(api.search).toHaveBeenCalledWith('foggy'));
+    // no search button exists anymore
+    expect(container.querySelector('[data-slot="raceForm"] button')).toBeNull();
+  });
+
   it('ingests a submitted new race URL through the archive API', async () => {
     const container = document.createElement('div');
     const api = {

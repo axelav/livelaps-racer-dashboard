@@ -94,6 +94,10 @@ body {
   padding: 4px 0;
   text-decoration: underline;
 }
+.section-heading {
+  font-size: 15px;
+  margin: 28px 0 10px;
+}
 .ledger-race-link {
   background: none;
   border: 0;

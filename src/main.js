@@ -53,6 +53,30 @@ function showSearch(options = {}) {
         `?race=${encodeURIComponent(raceId)}&id=${encodeURIComponent(participantId)}`
       );
       showDashboard(raceId, participantId, race);
+    },
+    async onSelectRacer(normalizedName) {
+      const thisRequest = ++requestId;
+      try {
+        const racerHistory = await archiveApi.history(normalizedName);
+        const latest = racerHistory.races?.at(-1);
+        if (!latest) throw new Error('No archived races for that rider yet.');
+        const race = await loadArchivedRace(latest.sourceRaceId);
+        if (thisRequest !== requestId) return;
+        const racer = race.allResults.find(
+          (entry) => normalizeRacerName(entry.fullName) === normalizedName
+        );
+        if (!racer) throw new Error("Couldn't find that rider in their latest archived race.");
+        history.pushState(
+          {},
+          '',
+          `?race=${encodeURIComponent(race.raceId)}&id=${encodeURIComponent(racer.id)}`
+        );
+        await showDashboard(race.raceId, racer.id, race, undefined, racerHistory);
+      } catch (error) {
+        if (thisRequest !== requestId) return;
+        console.error(error);
+        showSearch({ notice: error.message || "Couldn't load that rider's history." });
+      }
     }
   });
 }
