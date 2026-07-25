@@ -114,7 +114,6 @@ it('loads all archived history for the selected racer without changing race deta
     'History dashboard'
   );
   expect(document.querySelector('[data-slot="historyPanel"]')?.closest('.viz-root')).not.toBeNull();
-  expect(localStorage.getItem('enduro-breakdown.racer-name')).toBe('axel anderson');
 });
 
 it('changes only race detail when a history race is selected', async () => {
@@ -207,7 +206,7 @@ it('does not let an older picker load overwrite a later back navigation', async 
   const picker = document.querySelector('[data-slot="racePicker"]');
   picker.value = 'mototally:ECEA/Enduro/2026/6/O1';
   picker.dispatchEvent(new Event('change'));
-  document.querySelector('[data-slot="back"]').click();
+  document.querySelector('[data-slot="home"]').click();
   resolveRace(archivedRace([AXEL_ENTRY]));
 
   await vi.waitFor(() => expect(document.querySelector('[data-slot="participantSection"]')).not.toBeNull());

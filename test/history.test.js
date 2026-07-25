@@ -1,11 +1,6 @@
 // @vitest-environment happy-dom
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import {
-  clearSavedRacerName,
-  loadSavedRacerName,
-  renderHistory,
-  saveRacerName
-} from '../src/history.js';
+import { renderHistory } from '../src/history.js';
 
 const history = {
   racerName: 'Áxel Anderson',
@@ -43,25 +38,6 @@ const history = {
   trends: { overallPercentiles: [98, 80], classPercentiles: [100, 80] }
 };
 
-describe('racer preference', () => {
-  beforeEach(() => localStorage.clear());
-
-  it('saves, loads, and clears only the viewed racer name', () => {
-    const storage = new Map();
-    const fakeStorage = {
-      getItem: (key) => storage.get(key) ?? null,
-      setItem: (key, value) => storage.set(key, value),
-      removeItem: (key) => storage.delete(key)
-    };
-
-    saveRacerName('axel anderson', fakeStorage);
-    expect(loadSavedRacerName(fakeStorage)).toBe('axel anderson');
-
-    clearSavedRacerName(fakeStorage);
-    expect(loadSavedRacerName(fakeStorage)).toBeNull();
-  });
-});
-
 describe('history dashboard', () => {
   let container;
 
@@ -71,13 +47,11 @@ describe('history dashboard', () => {
 
   it('renders percentile trends, chronological ledger, and a race detail picker', () => {
     const onSelectRace = vi.fn();
-    const onClear = vi.fn();
 
     renderHistory(container, {
       history,
       selectedSourceRaceId: 'livelaps:79103',
-      onSelectRace,
-      onClear
+      onSelectRace
     });
 
     expect(container.textContent).toContain('Overall percentile');
@@ -93,9 +67,6 @@ describe('history dashboard', () => {
     picker.value = 'mototally:ECEA/Enduro/2026/6/O1';
     picker.dispatchEvent(new Event('change'));
     expect(onSelectRace).toHaveBeenCalledWith('mototally:ECEA/Enduro/2026/6/O1');
-
-    container.querySelector('[data-slot="clearHistory"]').click();
-    expect(onClear).toHaveBeenCalledOnce();
   });
 
   it('selects a race when its ledger row is clicked, same as the picker', () => {
@@ -103,8 +74,7 @@ describe('history dashboard', () => {
     renderHistory(container, {
       history,
       selectedSourceRaceId: 'livelaps:79103',
-      onSelectRace,
-      onClear: vi.fn()
+      onSelectRace
     });
 
     const rows = container.querySelectorAll('[data-slot="ledger"] tr');
@@ -117,8 +87,7 @@ describe('history dashboard', () => {
     renderHistory(container, {
       history,
       selectedSourceRaceId: 'livelaps:79103',
-      onSelectRace,
-      onClear: vi.fn()
+      onSelectRace
     });
     const before = container.querySelector('[data-slot="historyData"]').textContent;
 
@@ -133,8 +102,7 @@ describe('history dashboard', () => {
     renderHistory(container, {
       history: { racerName: 'Axel Anderson', races: [], trends: {} },
       selectedSourceRaceId: null,
-      onSelectRace: vi.fn(),
-      onClear: vi.fn()
+      onSelectRace: vi.fn()
     });
 
     expect(container.textContent).toContain('No archived events yet.');

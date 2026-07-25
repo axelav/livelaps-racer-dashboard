@@ -2,7 +2,7 @@ import './style.css';
 import { archiveApi, archivedRaceFromResponse } from './api.js';
 import { renderSearch } from './search.js';
 import { renderDashboard } from './dashboard.js';
-import { clearSavedRacerName, normalizeRacerName, renderHistory, saveRacerName } from './history.js';
+import { normalizeRacerName, renderHistory } from './history.js';
 
 const app = document.getElementById('app');
 let requestId = 0;
@@ -108,22 +108,24 @@ async function showDashboard(raceId, participantId, loadedRace, ingestInput, kno
       return;
     }
     const normalizedName = normalizeRacerName(totals.racer.fullName);
-    saveRacerName(normalizedName);
     app.innerHTML = `
       <div class="viz-root">
+        <div class="page-topbar">
+          <button type="button" class="back-link" data-slot="home">&larr; Home</button>
+        </div>
         <div class="dashboard-layout">
           <aside class="dashboard-history" data-slot="historyPanel"></aside>
           <main class="dashboard-detail" data-slot="detailPanel"></main>
         </div>
       </div>
     `;
+    app.querySelector('[data-slot="home"]').addEventListener('click', showSearchDefault);
     const historyPanel = app.querySelector('[data-slot="historyPanel"]');
     const detailPanel = app.querySelector('[data-slot="detailPanel"]');
     renderDashboard(detailPanel, {
       raceMeta: race.raceMeta,
       capturedAt: race.capturedAt,
       ...totals,
-      onBack: showSearchDefault,
       onRefresh: async () => {
         const refreshedRace = archivedRaceFromResponse(await archiveApi.refresh(raceId));
         activeRace = refreshedRace;
@@ -151,8 +153,7 @@ async function showDashboard(raceId, participantId, loadedRace, ingestInput, kno
             console.error(error);
             window.alert(error.message || "Couldn't load that archived race.");
           }
-        },
-        onClear: () => clearSavedRacerName()
+        }
       });
     };
 

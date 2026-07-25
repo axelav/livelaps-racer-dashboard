@@ -1,7 +1,5 @@
 import { lineChart } from './charts.js';
 
-const RACER_NAME_KEY = 'enduro-breakdown.racer-name';
-
 export function normalizeRacerName(name) {
   return name
     .normalize('NFKD')
@@ -9,18 +7,6 @@ export function normalizeRacerName(name) {
     .replace(/[^\p{L}\p{N}]+/gu, ' ')
     .trim()
     .toLocaleLowerCase();
-}
-
-export function loadSavedRacerName(storage = localStorage) {
-  return storage.getItem(RACER_NAME_KEY);
-}
-
-export function saveRacerName(name, storage = localStorage) {
-  storage.setItem(RACER_NAME_KEY, name);
-}
-
-export function clearSavedRacerName(storage = localStorage) {
-  storage.removeItem(RACER_NAME_KEY);
 }
 
 function formatDuration(totalSeconds) {
@@ -40,10 +26,7 @@ function raceDate(race) {
   return race.eventDateProvenance === 'source' ? race.eventDate : `${race.eventDate} (unverified)`;
 }
 
-export function renderHistory(
-  container,
-  { history, selectedSourceRaceId, onSelectRace, onClear }
-) {
+export function renderHistory(container, { history, selectedSourceRaceId, onSelectRace }) {
   const races = history.races ?? [];
   container.innerHTML = `
     <section class="history-dashboard" aria-label="Racer history dashboard">
@@ -53,7 +36,6 @@ export function renderHistory(
           <h2 data-slot="racerName"></h2>
           <p class="card-sub">Every archived event matching this racer name.</p>
         </div>
-        <button type="button" class="history-clear" data-slot="clearHistory">Clear saved racer</button>
       </div>
       <div class="history-picker">
         <label for="race-picker">Race detail</label>
@@ -94,7 +76,6 @@ export function renderHistory(
     picker.appendChild(option);
   });
   picker.addEventListener('change', () => onSelectRace(picker.value));
-  slot('clearHistory').addEventListener('click', onClear);
 
   if (races.length === 0) {
     picker.disabled = true;

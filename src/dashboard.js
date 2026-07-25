@@ -5,7 +5,6 @@ const TEMPLATE = `
   <div class="viz-root">
     <div class="wrap">
       <div class="race-actions">
-        <button class="back-link" type="button" data-slot="back">&larr; Search another racer</button>
         <div class="snapshot-actions">
           <span data-slot="capturedAt"></span>
           <button type="button" data-slot="refresh">Refresh</button>
@@ -119,12 +118,11 @@ function buildLegend(container, items) {
 
 export function renderDashboard(
   container,
-  { raceMeta, racer, fieldSize, classSize, capturedAt, onBack, onRefresh }
+  { raceMeta, racer, fieldSize, classSize, capturedAt, onRefresh }
 ) {
   container.innerHTML = TEMPLATE;
   const slot = (name) => container.querySelector(`[data-slot="${name}"]`);
 
-  slot('back').addEventListener('click', onBack);
   const capturedDate = new Date(capturedAt);
   slot('capturedAt').textContent = Number.isNaN(capturedDate.getTime())
     ? `Archived ${capturedAt}`
