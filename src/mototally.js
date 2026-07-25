@@ -125,6 +125,17 @@ export function parseCalendarMetadata(doc, descriptor) {
   return { eventDate: null, location: null, organizer: null };
 }
 
+// Moto-Tally events can split into disjoint courses (e.g. O1 "OVERALL Long
+// Course" and O5 "Overall Short"), each its own competition under the same
+// event name. Suffix the course label so archived races stay distinguishable.
+export function raceDisplayName(doc, group) {
+  const base = parseRaceName(doc);
+  if (!/^O\d+$/.test(group ?? '') || parseOverallOptions(doc).length < 2) return base;
+  const option = doc.querySelector(`#mtR_ddlSelectClass option[value="${group}"]`);
+  const label = option?.textContent.replace(/overall/i, '').trim();
+  return label ? `${base} — ${label}` : base;
+}
+
 export function parseOverallOptions(doc) {
   const select = doc.querySelector('#mtR_ddlSelectClass');
   if (!select) return [];
@@ -484,7 +495,7 @@ async function loadOverall(descriptor, fetchImpl, parseHtml) {
   const doc = await fetchDoc(buildPath(descriptor), fetchImpl, parseHtml);
   return {
     raceId: descriptorToRaceId(descriptor),
-    raceMeta: { raceName: parseRaceName(doc), modeName: 'Enduro' },
+    raceMeta: { raceName: raceDisplayName(doc, descriptor.group), modeName: 'Enduro' },
     allResults: deriveStandings(parseResults(doc))
   };
 }

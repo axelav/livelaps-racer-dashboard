@@ -2,21 +2,36 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { docFromHtml } from './fixtures/mototally.fixture.js';
-import { sanitizeHtml, parseResults, deriveStandings } from '../src/mototally.js';
+import { sanitizeHtml, parseResults, deriveStandings, raceDisplayName } from '../src/mototally.js';
 import { deriveTotals } from '../src/livelaps.js';
 
 // Real ECEA page fragment (2026 Foggy Mountain Enduro, OVERALL Long Course),
 // broken `</span` brand markup intact. 79 finishers + DNF rows.
 const FIXTURE_PATH = fileURLToPath(new URL('./fixtures/foggy-mountain-o1.html', import.meta.url));
 
+let doc;
 let raw;
 let standings;
 
 beforeAll(async () => {
   const html = sanitizeHtml(readFileSync(FIXTURE_PATH, 'utf8'));
-  const doc = await docFromHtml(html);
+  doc = await docFromHtml(html);
   raw = parseResults(doc);
   standings = deriveStandings(raw);
+});
+
+describe('raceDisplayName', () => {
+  // Events can split into disjoint courses (Long/Short); the course label from
+  // Moto-Tally's own dropdown disambiguates the archived races.
+  it('appends the course label when the event has multiple overall groups', () => {
+    expect(raceDisplayName(doc, 'O1')).toBe('2026 Foggy Mountain Enduro — Long Course');
+    expect(raceDisplayName(doc, 'O5')).toBe('2026 Foggy Mountain Enduro — Short');
+  });
+
+  it('falls back to the plain event name for unknown or class groups', () => {
+    expect(raceDisplayName(doc, 'C8')).toBe('2026 Foggy Mountain Enduro');
+    expect(raceDisplayName(doc, 'O99')).toBe('2026 Foggy Mountain Enduro');
+  });
 });
 
 describe('sanitizeHtml', () => {

@@ -19,7 +19,7 @@ describe('resolveAndLoadRace (overall link)', () => {
       'https://www.moto-tally.com/ECEA/Enduro/Results.aspx/2026/6/O1/CS'
     );
     expect(raceId).toBe('mototally:ECEA/Enduro/2026/6/O1');
-    expect(raceMeta).toEqual({ raceName: '2026 Test Enduro', modeName: 'Enduro' });
+    expect(raceMeta).toEqual({ raceName: '2026 Test Enduro — Long Course', modeName: 'Enduro' });
     expect(allResults).toHaveLength(3);
     expect(globalThis.fetch).toHaveBeenCalledWith(`${PROXY_PREFIX}ECEA/Enduro/Results.aspx/2026/6/O1/CS`);
   });

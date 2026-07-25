@@ -95,7 +95,7 @@ describe('server timing sources', () => {
       provider: 'mototally',
       sourceRaceId: 'ECEA/Enduro/2026/6/O1',
       canonicalUrl: MOTO_TALLY_URL,
-      raceName: '2026 Test Enduro',
+      raceName: '2026 Test Enduro — Long Course',
       modeName: 'Enduro',
       eventDate: '2026-07-12',
       location: 'Scranton, PA',

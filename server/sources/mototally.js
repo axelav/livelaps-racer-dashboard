@@ -6,6 +6,7 @@ import {
   parseRaceName,
   parseResults,
   pickContainingGroup,
+  raceDisplayName,
   sanitizeHtml
 } from '../../src/mototally.js';
 
@@ -55,7 +56,10 @@ async function calendarMetadata(descriptor, deps) {
 
 export async function loadMotoTally(source, deps) {
   const overall = await resolveOverall(source, deps);
-  const raceMeta = { raceName: parseRaceName(overall.doc), modeName: 'Enduro' };
+  const raceMeta = {
+    raceName: raceDisplayName(overall.doc, overall.descriptor.group),
+    modeName: 'Enduro'
+  };
   const metadata = await calendarMetadata(overall.descriptor, deps);
 
   return {
