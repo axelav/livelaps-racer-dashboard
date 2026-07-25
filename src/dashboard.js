@@ -1,4 +1,4 @@
-import { lineChart, barChart, pairedBarChart } from './charts.js';
+import { lineChart, barChart } from './charts.js';
 import { deriveSectionSeries, formatDuration, parseDuration } from './livelaps.js';
 
 const TEMPLATE = `
@@ -339,40 +339,32 @@ function renderPointsBreakdown(slot, subhead, racer, fieldSize, classSize, color
     series: [{ name: 'Class position', color: colors.class, values: sections.map((s) => s.classPosition) }]
   });
 
-  const timedSections = sections
-    .map((s, i) => ({ s, i }))
-    .filter(({ s }) => s.timed && s.publishedPlace != null);
-  if (timedSections.length >= 2) {
-    const sectionCard = slot('chartSection').closest('.card');
-    // a handful of timed checks doesn't warrant the full-width slot
-    sectionCard.classList.remove('full');
-    sectionCard.querySelector('h2').textContent = 'Cumulative standing vs. that check alone';
-    sectionCard.querySelector('.card-sub').textContent =
-      "Overall standing vs. how that timed check's seconds alone ranked — lower is better";
-    buildLegend(slot('legendSection'), [
-      { name: 'Cumulative overall position', color: colors.overall },
-      { name: "That check's rank alone", color: colors.section }
-    ]);
-    pairedBarChart(slot('chartSection'), {
-      ariaLabel: 'Cumulative position vs timed-check rank',
-      labels: timedSections.map(({ s }) => s.sectionName),
-      xTick: (k) => `C${timedSections[k].i + 1}`,
-      series: [
-        {
-          name: 'Cumulative overall position',
-          color: colors.overall,
-          values: timedSections.map(({ s }) => s.overallPosition)
-        },
-        {
-          name: "That check's rank alone",
-          color: colors.section,
-          values: timedSections.map(({ s }) => s.publishedPlace)
-        }
-      ]
-    });
-  } else {
-    slot('chartSection').closest('.card').remove();
-  }
+  const sectionCard = slot('chartSection').closest('.card');
+  sectionCard.querySelector('h2').textContent = 'Cumulative standing vs. that check alone';
+  sectionCard.querySelector('.card-sub').textContent =
+    'Where they stood overall vs. how that check alone ranked — riders tied on a check share the best rank';
+  buildLegend(slot('legendSection'), [
+    { name: 'Cumulative overall position', color: colors.overall },
+    { name: "That check's rank alone", color: colors.section }
+  ]);
+  lineChart(slot('chartSection'), {
+    ariaLabel: 'Cumulative position vs check-alone rank',
+    clampMin: 1,
+    labels,
+    xTick: checkTick,
+    series: [
+      {
+        name: 'Cumulative overall position',
+        color: colors.overall,
+        values: sections.map((s) => s.overallPosition)
+      },
+      {
+        name: "That check's rank alone",
+        color: colors.section,
+        values: sections.map((s) => s.sectionOverallPosition)
+      }
+    ]
+  });
 
   slot('chartSpeed').closest('.card').remove();
 
@@ -416,7 +408,7 @@ function renderPointsBreakdown(slot, subhead, racer, fieldSize, classSize, color
       s.points ?? '—',
       s.cumPoints,
       s.seconds != null ? formatDuration(s.seconds) : '—',
-      s.publishedPlace ?? '—',
+      s.sectionOverallPosition ?? '—',
       s.sectionClassPosition ?? '—',
       s.overallPosition,
       s.classPosition

@@ -252,18 +252,25 @@ function deriveStandingsPoints(rawRecords) {
     return pos;
   };
 
-  // Class rank on this check's raw seconds alone — only meaningful at
-  // emergency checks (route checks tie in whole minutes; the source publishes
-  // no per-check rank there and neither do we).
-  const timedClassRank = (si, ri) => {
-    const mine = rawRecords[ri].checks[si]?.seconds;
+  // Rank on this check's score alone: points, tie-broken by seconds where the
+  // check is timed. At emergency checks this reproduces the published place; at
+  // route checks whole-minute scores tie, and tied riders share the best rank
+  // (competition ranking).
+  const checkAloneRank = (si, ri, sameClass) => {
+    const mine = rawRecords[ri].checks[si];
     if (mine == null) return null;
     let pos = 1;
     for (let j = 0; j < n; j++) {
       if (j === ri) continue;
-      if (rawRecords[j].className !== rawRecords[ri].className) continue;
-      const other = rawRecords[j].checks[si]?.seconds;
-      if (other != null && other < mine) pos++;
+      if (sameClass && rawRecords[j].className !== rawRecords[ri].className) continue;
+      const other = rawRecords[j].checks[si];
+      if (other == null) continue;
+      if (
+        other.points < mine.points ||
+        (other.points === mine.points && (other.seconds ?? 0) < (mine.seconds ?? 0))
+      ) {
+        pos++;
+      }
     }
     return pos;
   };
@@ -306,7 +313,8 @@ function deriveStandingsPoints(rawRecords) {
       points: c?.points ?? null,
       seconds: c?.seconds ?? null,
       publishedPlace: c?.publishedPlace ?? null,
-      sectionClassPosition: timedClassRank(si, ri),
+      sectionOverallPosition: checkAloneRank(si, ri, false),
+      sectionClassPosition: checkAloneRank(si, ri, true),
       cumPoints: cum[ri][si].points,
       cumSeconds: cum[ri][si].seconds,
       overallPosition: positionAt(si, ri, false),

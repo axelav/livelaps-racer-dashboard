@@ -111,8 +111,10 @@ export function lineChart(container, opts) {
   const labels = opts.labels;
   const n = labels.length;
 
+  // null values = no data at that x (e.g. a rider who missed a check); the
+  // line breaks there instead of plotting a fake point.
   const allVals = [];
-  opts.series.forEach((s) => s.values.forEach((v) => allVals.push(v)));
+  opts.series.forEach((s) => s.values.forEach((v) => v != null && allVals.push(v)));
   const dMin = Math.min(...allVals);
   const dMax = Math.max(...allVals);
   const pad = Math.max((dMax - dMin) * 0.25, 2);
@@ -154,16 +156,28 @@ export function lineChart(container, opts) {
   const crosshair = el('line', { class: 'crosshair', x1: 0, x2: 0, y1: plotT, y2: plotB, opacity: 0 });
 
   opts.series.forEach((s) => {
-    const d = s.values.map((v, i) => (i === 0 ? 'M' : 'L') + xAt(i) + ',' + yAt(v)).join(' ');
+    let d = '';
+    let pen = false;
+    s.values.forEach((v, i) => {
+      if (v == null) {
+        pen = false;
+        return;
+      }
+      d += (pen ? ' L' : ' M') + xAt(i) + ',' + yAt(v);
+      pen = true;
+    });
     svg.appendChild(
-      el('path', { d, fill: 'none', stroke: s.color, 'stroke-width': 2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' })
+      el('path', { d: d.trim(), fill: 'none', stroke: s.color, 'stroke-width': 2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' })
     );
     s.values.forEach((v, i) => {
+      if (v == null) return;
       svg.appendChild(
         el('circle', { class: 'pt', cx: xAt(i), cy: yAt(v), r: 4, fill: s.color, stroke: cssVar(container, '--surface-1'), 'stroke-width': 2 })
       );
     });
-    const lastI = s.values.length - 1;
+    let lastI = s.values.length - 1;
+    while (lastI >= 0 && s.values[lastI] == null) lastI--;
+    if (lastI < 0) return;
     const endLabel = el('text', { class: 'end-label', x: xAt(lastI) + 8, y: yAt(s.values[lastI]) - 8, 'text-anchor': 'start' });
     endLabel.textContent = Math.round(s.values[lastI]) + (opts.suffix || '');
     svg.appendChild(endLabel);
@@ -199,7 +213,8 @@ export function lineChart(container, opts) {
       title.textContent = labels[i];
       tip.appendChild(title);
       opts.series.forEach((s) => {
-        ttRow(tip, s.color, s.name, Math.round(s.values[i]) + (opts.suffix || ''));
+        const v = s.values[i];
+        ttRow(tip, s.color, s.name, v == null ? '—' : Math.round(v) + (opts.suffix || ''));
       });
     }, localX, localY);
   }
@@ -208,82 +223,6 @@ export function lineChart(container, opts) {
   overlay.addEventListener('pointerleave', () => {
     crosshair.setAttribute('opacity', 0);
     tooltip.hide();
-  });
-}
-
-// Two bars per category. Used where two rank series can be equal — overlapping
-// lines hide one series entirely; side-by-side bars never do.
-export function pairedBarChart(container, opts) {
-  const W = 520, H = 220;
-  const padL = 34, padR = 16, padT = 20, padB = 26;
-  const plotL = padL, plotR = W - padR, plotT = padT, plotB = H - padB;
-  const labels = opts.labels;
-  const [a, b] = opts.series;
-  const n = labels.length;
-  const dMax = Math.max(...a.values, ...b.values);
-  const domain = niceTicks(0, dMax * 1.15, 4);
-
-  const svg = el('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': opts.ariaLabel || '' });
-  const bandW = (plotR - plotL) / n;
-  const barW = Math.min(24, bandW * 0.24);
-  const gap = 2; // surface gap between the pair
-
-  domain.ticks.forEach((t) => {
-    const y = scaleY(t, domain.min, domain.max, plotT, plotB, false);
-    svg.appendChild(el('line', { class: 'grid-line', x1: plotL, x2: plotR, y1: y, y2: y }));
-    const lbl = el('text', { class: 'tick-label', x: plotL - 8, y: y + 3, 'text-anchor': 'end' });
-    lbl.textContent = String(Math.round(t));
-    svg.appendChild(lbl);
-  });
-  svg.appendChild(el('line', { class: 'axis-line', x1: plotL, x2: plotR, y1: plotB, y2: plotB }));
-
-  container.innerHTML = '';
-  container.appendChild(svg);
-  const tooltip = makeTooltip(container);
-
-  labels.forEach((label, i) => {
-    const center = plotL + bandW * (i + 0.5);
-    const xl = el('text', { class: 'tick-label', x: center, y: H - 8, 'text-anchor': 'middle' });
-    xl.textContent = opts.xTick ? opts.xTick(i) : label;
-    svg.appendChild(xl);
-
-    [a, b].forEach((s, si) => {
-      const v = s.values[i];
-      const x = si === 0 ? center - barW - gap / 2 : center + gap / 2;
-      const y = scaleY(v, domain.min, domain.max, plotT, plotB, false);
-      const path = el('path', {
-        class: 'bar',
-        d: roundedTopRectPath(x, y, barW, plotB - y, 4),
-        fill: s.color,
-        tabindex: '0',
-        role: 'img',
-        'aria-label': `${label} — ${s.name}: ${v}`
-      });
-      svg.appendChild(path);
-
-      const cap = el('text', { class: 'tick-label', x: x + barW / 2, y: y - 6, 'text-anchor': 'middle' });
-      cap.textContent = String(v);
-      cap.setAttribute('fill', cssVar(container, '--text-secondary'));
-      svg.appendChild(cap);
-
-      function show() {
-        const contRect = container.getBoundingClientRect();
-        const pathRect = path.getBoundingClientRect();
-        tooltip.show((tip) => {
-          const title = document.createElement('div');
-          title.className = 'tt-title';
-          title.textContent = label;
-          tip.appendChild(title);
-          ttRow(tip, a.color, a.name, String(a.values[i]));
-          ttRow(tip, b.color, b.name, String(b.values[i]));
-        }, pathRect.left - contRect.left, pathRect.top - contRect.top);
-      }
-      path.addEventListener('pointerenter', show);
-      path.addEventListener('pointermove', show);
-      path.addEventListener('focus', show);
-      path.addEventListener('pointerleave', tooltip.hide);
-      path.addEventListener('blur', tooltip.hide);
-    });
   });
 }
 

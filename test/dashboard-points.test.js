@@ -87,7 +87,7 @@ describe('renderDashboard for a points-scored racer', () => {
     const check3 = Array.from(rows[2].querySelectorAll('td')).map((td) => td.textContent);
     expect(check3).toEqual(['Check 3', '11', '11', '10:56', '53', '6', '53', '6']);
     const check1 = Array.from(rows[0].querySelectorAll('td')).map((td) => td.textContent);
-    expect(check1).toEqual(['Check 1', '0', '0', '—', '—', '—', '1', '1']);
+    expect(check1).toEqual(['Check 1', '0', '0', '—', '1', '1', '1', '1']);
   });
 
   it('renders position charts for every check and a timed-only comparison chart', () => {
@@ -98,18 +98,25 @@ describe('renderDashboard for a points-scored racer', () => {
     expect(sectionChart.querySelector('svg')).not.toBeNull();
   });
 
-  it('draws the timed-check comparison as paired bars so equal ranks stay visible', () => {
+  it('plots the check-alone comparison across all 13 checks', () => {
     const c = render(3279244);
-    const sectionCard = c.querySelector('[data-slot="chartSection"]').closest('.card');
-    // compact card: 3 timed checks don't warrant the full-width slot
-    expect(sectionCard.classList.contains('full')).toBe(false);
-    // 3 timed checks × 2 series = 6 bars, each direct-labeled with its rank
-    const bars = c.querySelectorAll('[data-slot="chartSection"] svg .bar');
-    expect(bars).toHaveLength(6);
-    const barLabels = Array.from(bars).map((b) => b.getAttribute('aria-label'));
-    expect(barLabels).toContain('Check 3 — Cumulative overall position: 53');
-    expect(barLabels).toContain("Check 3 — That check's rank alone: 53");
-    expect(barLabels).toContain("Check 5 — That check's rank alone: 55");
+    const chart = c.querySelector('[data-slot="chartSection"]');
+    // both series drawn over every check: 2 × 13 points
+    expect(chart.querySelectorAll('svg circle.pt')).toHaveLength(26);
+    const xLabels = Array.from(chart.querySelectorAll('svg text'))
+      .map((t) => t.textContent)
+      .filter((t) => /^C\d+$/.test(t));
+    expect(xLabels).toHaveLength(13);
+  });
+
+  it('breaks the check-alone line where a rider missed checks instead of plotting fake points', () => {
+    const c = render(3386973); // COLIN QUIRIN, 7 of 13 checks
+    const chart = c.querySelector('[data-slot="chartSection"]');
+    const paths = Array.from(chart.querySelectorAll('svg path[stroke]'));
+    expect(paths.length).toBe(2);
+    for (const p of paths) expect(p.getAttribute('d')).not.toContain('NaN');
+    // rank-alone series has only 7 points; cumulative has all 13
+    expect(chart.querySelectorAll('svg circle.pt')).toHaveLength(20);
   });
 
   it('never shows negative positions on chart axes', () => {

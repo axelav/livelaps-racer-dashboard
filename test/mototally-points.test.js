@@ -130,15 +130,32 @@ describe('deriveStandings for points scoring', () => {
     expect(check1).toMatchObject({ timed: false, points: 0, seconds: null, publishedPlace: null });
   });
 
-  it('computes class rank on seconds alone at timed checks, null elsewhere', () => {
+  it('computes check-alone ranks for every check, matching every published place at timed checks', () => {
+    let compared = 0;
+    for (const r of standings) {
+      for (const s of r.sections) {
+        if (s.publishedPlace != null) {
+          compared++;
+          expect(s.sectionOverallPosition).toBe(s.publishedPlace);
+        }
+      }
+    }
+    expect(compared).toBeGreaterThan(200); // 79 riders × up to 3 timed checks
+
     const axel = standings.find((r) => r.fullName === 'AXEL ANDERSON');
     // A SR 40+ seconds at the timed checks — verified by hand against the fixture.
     expect(axel.sections[2].sectionClassPosition).toBe(6); // 656s, 5 classmates faster
     expect(axel.sections[3].sectionClassPosition).toBe(7); // 79s
     expect(axel.sections[4].sectionClassPosition).toBe(7); // 517s
-    expect(axel.sections[0].sectionClassPosition).toBeNull(); // route check
+    // route checks rank on points; everyone who dropped 0 shares 1st
+    expect(axel.sections[0].sectionOverallPosition).toBe(1);
+    expect(axel.sections[0].sectionClassPosition).toBe(1);
+    expect(axel.sections[12].sectionOverallPosition).toBe(37); // dropped 10 on the last check
     const bizzari = standings.find((r) => r.fullName === 'KRIS BIZZARI');
     expect(bizzari.sections[3].sectionClassPosition).toBe(1); // 12s, fastest in class
+    // riders who never reached a check have no rank there
+    const quirin = standings.find((r) => r.fullName === 'COLIN QUIRIN');
+    expect(quirin.sections[7].sectionOverallPosition).toBeNull();
   });
 
   it('freezes cumulative totals when a rider stops reaching checks', () => {
