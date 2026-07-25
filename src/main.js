@@ -81,10 +81,12 @@ function showSearch(options = {}) {
   });
 }
 
+// Home always means the clean search page — never a leftover loaded race.
 function showSearchDefault() {
   ++requestId;
+  activeRace = null;
   history.pushState({}, '', window.location.pathname);
-  showSearch({ race: activeRace });
+  showSearch();
 }
 
 async function showDashboard(raceId, participantId, loadedRace, ingestInput, knownHistory) {
@@ -203,7 +205,7 @@ function route() {
   } else if (raceId) {
     showRaceSearch(raceId, ingestInput);
   } else {
-    showSearch({ race: activeRace });
+    showSearch();
   }
 }
 
