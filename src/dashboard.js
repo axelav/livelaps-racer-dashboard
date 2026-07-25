@@ -1,4 +1,4 @@
-import { lineChart, barChart } from './charts.js';
+import { lineChart, barChart, pairedBarChart } from './charts.js';
 import { deriveSectionSeries, formatDuration, parseDuration } from './livelaps.js';
 
 const TEMPLATE = `
@@ -191,7 +191,10 @@ export function renderDashboard(
     renderPointsBreakdown(slot, subhead, racer, fieldSize, classSize, {
       overall: colorOverall,
       class: colorClass,
-      section: colorSection,
+      // amber, not the section purple: blue/purple is indistinguishable under
+      // red-green CVD on the dark surface (validated ΔE 1.9); blue/amber passes
+      // both modes. Free here — points mode has no speed chart.
+      section: colorSpeed,
       gap: colorGap
     });
     return;
@@ -341,16 +344,17 @@ function renderPointsBreakdown(slot, subhead, racer, fieldSize, classSize, color
     .filter(({ s }) => s.timed && s.publishedPlace != null);
   if (timedSections.length >= 2) {
     const sectionCard = slot('chartSection').closest('.card');
+    // a handful of timed checks doesn't warrant the full-width slot
+    sectionCard.classList.remove('full');
     sectionCard.querySelector('h2').textContent = 'Cumulative standing vs. that check alone';
     sectionCard.querySelector('.card-sub').textContent =
-      "Where they stood overall vs. how that timed check's seconds alone ranked";
+      "Overall standing vs. how that timed check's seconds alone ranked — lower is better";
     buildLegend(slot('legendSection'), [
       { name: 'Cumulative overall position', color: colors.overall },
       { name: "That check's rank alone", color: colors.section }
     ]);
-    lineChart(slot('chartSection'), {
+    pairedBarChart(slot('chartSection'), {
       ariaLabel: 'Cumulative position vs timed-check rank',
-    clampMin: 1,
       labels: timedSections.map(({ s }) => s.sectionName),
       xTick: (k) => `C${timedSections[k].i + 1}`,
       series: [
@@ -360,7 +364,7 @@ function renderPointsBreakdown(slot, subhead, racer, fieldSize, classSize, color
           values: timedSections.map(({ s }) => s.overallPosition)
         },
         {
-          name: "Timed check's rank alone",
+          name: "That check's rank alone",
           color: colors.section,
           values: timedSections.map(({ s }) => s.publishedPlace)
         }

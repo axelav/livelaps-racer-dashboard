@@ -98,6 +98,20 @@ describe('renderDashboard for a points-scored racer', () => {
     expect(sectionChart.querySelector('svg')).not.toBeNull();
   });
 
+  it('draws the timed-check comparison as paired bars so equal ranks stay visible', () => {
+    const c = render(3279244);
+    const sectionCard = c.querySelector('[data-slot="chartSection"]').closest('.card');
+    // compact card: 3 timed checks don't warrant the full-width slot
+    expect(sectionCard.classList.contains('full')).toBe(false);
+    // 3 timed checks × 2 series = 6 bars, each direct-labeled with its rank
+    const bars = c.querySelectorAll('[data-slot="chartSection"] svg .bar');
+    expect(bars).toHaveLength(6);
+    const barLabels = Array.from(bars).map((b) => b.getAttribute('aria-label'));
+    expect(barLabels).toContain('Check 3 — Cumulative overall position: 53');
+    expect(barLabels).toContain("Check 3 — That check's rank alone: 53");
+    expect(barLabels).toContain("Check 5 — That check's rank alone: 55");
+  });
+
   it('never shows negative positions on chart axes', () => {
     const c = render(3279244);
     const ticks = Array.from(c.querySelectorAll('svg text.tick-label'))

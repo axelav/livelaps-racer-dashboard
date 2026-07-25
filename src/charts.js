@@ -211,6 +211,82 @@ export function lineChart(container, opts) {
   });
 }
 
+// Two bars per category. Used where two rank series can be equal — overlapping
+// lines hide one series entirely; side-by-side bars never do.
+export function pairedBarChart(container, opts) {
+  const W = 520, H = 220;
+  const padL = 34, padR = 16, padT = 20, padB = 26;
+  const plotL = padL, plotR = W - padR, plotT = padT, plotB = H - padB;
+  const labels = opts.labels;
+  const [a, b] = opts.series;
+  const n = labels.length;
+  const dMax = Math.max(...a.values, ...b.values);
+  const domain = niceTicks(0, dMax * 1.15, 4);
+
+  const svg = el('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': opts.ariaLabel || '' });
+  const bandW = (plotR - plotL) / n;
+  const barW = Math.min(24, bandW * 0.24);
+  const gap = 2; // surface gap between the pair
+
+  domain.ticks.forEach((t) => {
+    const y = scaleY(t, domain.min, domain.max, plotT, plotB, false);
+    svg.appendChild(el('line', { class: 'grid-line', x1: plotL, x2: plotR, y1: y, y2: y }));
+    const lbl = el('text', { class: 'tick-label', x: plotL - 8, y: y + 3, 'text-anchor': 'end' });
+    lbl.textContent = String(Math.round(t));
+    svg.appendChild(lbl);
+  });
+  svg.appendChild(el('line', { class: 'axis-line', x1: plotL, x2: plotR, y1: plotB, y2: plotB }));
+
+  container.innerHTML = '';
+  container.appendChild(svg);
+  const tooltip = makeTooltip(container);
+
+  labels.forEach((label, i) => {
+    const center = plotL + bandW * (i + 0.5);
+    const xl = el('text', { class: 'tick-label', x: center, y: H - 8, 'text-anchor': 'middle' });
+    xl.textContent = opts.xTick ? opts.xTick(i) : label;
+    svg.appendChild(xl);
+
+    [a, b].forEach((s, si) => {
+      const v = s.values[i];
+      const x = si === 0 ? center - barW - gap / 2 : center + gap / 2;
+      const y = scaleY(v, domain.min, domain.max, plotT, plotB, false);
+      const path = el('path', {
+        class: 'bar',
+        d: roundedTopRectPath(x, y, barW, plotB - y, 4),
+        fill: s.color,
+        tabindex: '0',
+        role: 'img',
+        'aria-label': `${label} — ${s.name}: ${v}`
+      });
+      svg.appendChild(path);
+
+      const cap = el('text', { class: 'tick-label', x: x + barW / 2, y: y - 6, 'text-anchor': 'middle' });
+      cap.textContent = String(v);
+      cap.setAttribute('fill', cssVar(container, '--text-secondary'));
+      svg.appendChild(cap);
+
+      function show() {
+        const contRect = container.getBoundingClientRect();
+        const pathRect = path.getBoundingClientRect();
+        tooltip.show((tip) => {
+          const title = document.createElement('div');
+          title.className = 'tt-title';
+          title.textContent = label;
+          tip.appendChild(title);
+          ttRow(tip, a.color, a.name, String(a.values[i]));
+          ttRow(tip, b.color, b.name, String(b.values[i]));
+        }, pathRect.left - contRect.left, pathRect.top - contRect.top);
+      }
+      path.addEventListener('pointerenter', show);
+      path.addEventListener('pointermove', show);
+      path.addEventListener('focus', show);
+      path.addEventListener('pointerleave', tooltip.hide);
+      path.addEventListener('blur', tooltip.hide);
+    });
+  });
+}
+
 export function barChart(container, opts) {
   const W = 520, H = 220;
   const padL = 34, padR = 16, padT = 20, padB = 26;
