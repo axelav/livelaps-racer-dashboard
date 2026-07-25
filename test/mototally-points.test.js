@@ -130,6 +130,17 @@ describe('deriveStandings for points scoring', () => {
     expect(check1).toMatchObject({ timed: false, points: 0, seconds: null, publishedPlace: null });
   });
 
+  it('computes class rank on seconds alone at timed checks, null elsewhere', () => {
+    const axel = standings.find((r) => r.fullName === 'AXEL ANDERSON');
+    // A SR 40+ seconds at the timed checks — verified by hand against the fixture.
+    expect(axel.sections[2].sectionClassPosition).toBe(6); // 656s, 5 classmates faster
+    expect(axel.sections[3].sectionClassPosition).toBe(7); // 79s
+    expect(axel.sections[4].sectionClassPosition).toBe(7); // 517s
+    expect(axel.sections[0].sectionClassPosition).toBeNull(); // route check
+    const bizzari = standings.find((r) => r.fullName === 'KRIS BIZZARI');
+    expect(bizzari.sections[3].sectionClassPosition).toBe(1); // 12s, fastest in class
+  });
+
   it('freezes cumulative totals when a rider stops reaching checks', () => {
     const hodgson = standings.find((r) => r.fullName === 'TONY HODGSON');
     expect(hodgson.sections[4].cumPoints).toBe(49);

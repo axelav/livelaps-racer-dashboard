@@ -394,6 +394,7 @@ function renderPointsBreakdown(slot, subhead, racer, fieldSize, classSize, color
     'Cumulative points',
     'Emergency time',
     'Check rank (overall)',
+    'Check rank (class)',
     'Overall position',
     'Class position'
   ].forEach((label) => {
@@ -412,11 +413,12 @@ function renderPointsBreakdown(slot, subhead, racer, fieldSize, classSize, color
       s.cumPoints,
       s.seconds != null ? formatDuration(s.seconds) : '—',
       s.publishedPlace ?? '—',
+      s.sectionClassPosition ?? '—',
       s.overallPosition,
       s.classPosition
     ].forEach((val) => {
       const td = document.createElement('td');
-      td.textContent = val;
+      td.textContent = String(val);
       tr.appendChild(td);
     });
     tbody.appendChild(tr);

@@ -138,14 +138,23 @@ export function renderHistory(
     const row = document.createElement('tr');
     [
       raceDate(race),
-      race.raceName,
+      race,
       sourceLabel(race.provider),
       `${race.overallPosition ?? '—'} / ${race.fieldSize ?? '—'}`,
       `${race.classPosition ?? '—'} / ${race.classSize ?? '—'}`,
       race.totalPoints != null ? `${race.totalPoints} pts` : formatDuration(race.totalTimeSeconds)
     ].forEach((value) => {
       const cell = document.createElement('td');
-      cell.textContent = value;
+      if (value === race) {
+        const link = document.createElement('button');
+        link.type = 'button';
+        link.className = 'ledger-race-link';
+        link.textContent = race.raceName;
+        link.addEventListener('click', () => onSelectRace(race.sourceRaceId));
+        cell.appendChild(link);
+      } else {
+        cell.textContent = value;
+      }
       row.appendChild(cell);
     });
     ledger.appendChild(row);

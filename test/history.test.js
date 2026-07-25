@@ -98,6 +98,20 @@ describe('history dashboard', () => {
     expect(onClear).toHaveBeenCalledOnce();
   });
 
+  it('selects a race when its ledger row is clicked, same as the picker', () => {
+    const onSelectRace = vi.fn();
+    renderHistory(container, {
+      history,
+      selectedSourceRaceId: 'livelaps:79103',
+      onSelectRace,
+      onClear: vi.fn()
+    });
+
+    const rows = container.querySelectorAll('[data-slot="ledger"] tr');
+    rows[1].querySelector('button').click();
+    expect(onSelectRace).toHaveBeenCalledWith('mototally:ECEA/Enduro/2026/6/O1');
+  });
+
   it('keeps trend and ledger data stable when the detail picker changes', () => {
     const onSelectRace = vi.fn();
     renderHistory(container, {

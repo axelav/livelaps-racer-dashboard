@@ -94,6 +94,20 @@ body {
   padding: 4px 0;
   text-decoration: underline;
 }
+.ledger-race-link {
+  background: none;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  padding: 0;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: var(--text-secondary);
+}
+.ledger-race-link:hover {
+  text-decoration-color: currentColor;
+}
 .history-picker {
   align-items: center;
   display: flex;

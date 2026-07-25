@@ -78,13 +78,16 @@ describe('renderDashboard for a points-scored racer', () => {
       'Cumulative points',
       'Emergency time',
       'Check rank (overall)',
+      'Check rank (class)',
       'Overall position',
       'Class position'
     ]);
     const rows = Array.from(c.querySelectorAll('[data-slot="tableBody"] tr'));
     expect(rows).toHaveLength(13);
     const check3 = Array.from(rows[2].querySelectorAll('td')).map((td) => td.textContent);
-    expect(check3).toEqual(['Check 3', '11', '11', '10:56', '53', '53', '6']);
+    expect(check3).toEqual(['Check 3', '11', '11', '10:56', '53', '6', '53', '6']);
+    const check1 = Array.from(rows[0].querySelectorAll('td')).map((td) => td.textContent);
+    expect(check1).toEqual(['Check 1', '0', '0', '—', '—', '—', '1', '1']);
   });
 
   it('renders position charts for every check and a timed-only comparison chart', () => {

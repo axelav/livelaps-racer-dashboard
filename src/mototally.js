@@ -252,6 +252,22 @@ function deriveStandingsPoints(rawRecords) {
     return pos;
   };
 
+  // Class rank on this check's raw seconds alone — only meaningful at
+  // emergency checks (route checks tie in whole minutes; the source publishes
+  // no per-check rank there and neither do we).
+  const timedClassRank = (si, ri) => {
+    const mine = rawRecords[ri].checks[si]?.seconds;
+    if (mine == null) return null;
+    let pos = 1;
+    for (let j = 0; j < n; j++) {
+      if (j === ri) continue;
+      if (rawRecords[j].className !== rawRecords[ri].className) continue;
+      const other = rawRecords[j].checks[si]?.seconds;
+      if (other != null && other < mine) pos++;
+    }
+    return pos;
+  };
+
   const last = checkCount - 1;
 
   // Final class position: same comparator, but exact dead heats (possible —
@@ -290,6 +306,7 @@ function deriveStandingsPoints(rawRecords) {
       points: c?.points ?? null,
       seconds: c?.seconds ?? null,
       publishedPlace: c?.publishedPlace ?? null,
+      sectionClassPosition: timedClassRank(si, ri),
       cumPoints: cum[ri][si].points,
       cumSeconds: cum[ri][si].seconds,
       overallPosition: positionAt(si, ri, false),
