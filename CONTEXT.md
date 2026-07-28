@@ -36,6 +36,10 @@ _Avoid_: Private import, curator approval
 Archive ingestion that completes its upstream fetch, normalization, and Race Snapshot creation within the initiating visitor's request.
 _Avoid_: Background import, queued ingestion
 
+**Archive backfill**:
+An operator-run archive ingestion that discovers historical Source Races from a timing provider's published calendar and creates missing Race Snapshots without refreshing or replacing existing archived Source Races.
+_Avoid_: Event import, bulk refresh
+
 **Current snapshot**:
 The newest successfully created Race Snapshot for an archived race. A failed Refresh never replaces it.
 _Avoid_: Latest attempted fetch, stale cache
