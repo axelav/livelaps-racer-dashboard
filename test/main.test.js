@@ -83,6 +83,27 @@ it('canonicalizes a numeric race query before rendering its racer detail', async
   expect(new URLSearchParams(location.search).get('id')).toBe('4758874');
 });
 
+it('preserves Comparison Set slots while canonicalizing the dashboard URL', async () => {
+  api.sourceRace.mockResolvedValueOnce(archivedRace([AXEL_ENTRY]));
+  history.replaceState(
+    {},
+    '',
+    '/?race=79103&id=4758874&compare1=bea%20brown&compare3=cal%20chen'
+  );
+
+  await import('../src/main.js?comparison-slots');
+
+  await vi.waitFor(() =>
+    expect(document.querySelector('[data-slot="title"]')?.textContent).toContain('Axel Anderson')
+  );
+  const params = new URLSearchParams(location.search);
+  expect(params.get('race')).toBe('livelaps:79103');
+  expect(params.get('id')).toBe('4758874');
+  expect(params.get('compare1')).toBe('bea brown');
+  expect(params.get('compare2')).toBeNull();
+  expect(params.get('compare3')).toBe('cal chen');
+});
+
 it('loads all archived history for the selected racer without changing race detail', async () => {
   api.sourceRace.mockResolvedValueOnce(archivedRace([AXEL_ENTRY]));
   api.history.mockResolvedValueOnce({

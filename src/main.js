@@ -3,6 +3,7 @@ import { archiveApi, archivedRaceFromResponse } from './api.js';
 import { renderSearch } from './search.js';
 import { renderDashboard } from './dashboard.js';
 import { normalizeRacerName, renderHistory } from './history.js';
+import { comparisonSetFromParams, writeComparisonSet } from './comparisonSet.js';
 
 const app = document.getElementById('app');
 let requestId = 0;
@@ -23,6 +24,14 @@ function currentParams() {
     participantId: params.get('id'),
     ingestInput: legacyRaceId
   };
+}
+
+function dashboardUrl(raceId, participantId, comparisonSet = comparisonSetFromParams(new URLSearchParams(window.location.search))) {
+  const params = new URLSearchParams();
+  params.set('race', raceId);
+  params.set('id', participantId);
+  writeComparisonSet(params, comparisonSet);
+  return `?${params.toString()}`;
 }
 
 async function loadArchivedRace(raceId, ingestInput) {
@@ -47,11 +56,7 @@ function showSearch(options = {}) {
     api: archiveApi,
     onSelect(raceId, participantId, race) {
       activeRace = race;
-      history.pushState(
-        {},
-        '',
-        `?race=${encodeURIComponent(raceId)}&id=${encodeURIComponent(participantId)}`
-      );
+      history.pushState({}, '', dashboardUrl(raceId, participantId, []));
       showDashboard(raceId, participantId, race);
     },
     async onSelectRacer(normalizedName) {
@@ -66,11 +71,7 @@ function showSearch(options = {}) {
           (entry) => normalizeRacerName(entry.fullName) === normalizedName
         );
         if (!racer) throw new Error("Couldn't find that rider in their latest archived race.");
-        history.pushState(
-          {},
-          '',
-          `?race=${encodeURIComponent(race.raceId)}&id=${encodeURIComponent(racer.id)}`
-        );
+        history.pushState({}, '', dashboardUrl(race.raceId, racer.id, []));
         await showDashboard(race.raceId, racer.id, race, undefined, racerHistory);
       } catch (error) {
         if (thisRequest !== requestId) return;
@@ -98,11 +99,7 @@ async function showDashboard(raceId, participantId, loadedRace, ingestInput, kno
         : await loadArchivedRace(raceId, ingestInput);
     if (thisRequest !== requestId) return;
     activeRace = race;
-    history.replaceState(
-      {},
-      '',
-      `?race=${encodeURIComponent(race.raceId)}&id=${encodeURIComponent(participantId)}`
-    );
+    history.replaceState({}, '', dashboardUrl(race.raceId, participantId));
     const totals = deriveTotals(race.allResults, participantId);
     if (!totals) {
       history.replaceState({}, '', window.location.pathname);
