@@ -1,4 +1,5 @@
 import { lineChart } from './charts.js';
+import { historySeriesColors } from './seriesColors.js';
 
 export function normalizeRacerName(name) {
   return name
@@ -78,6 +79,7 @@ export function renderHistory(container, { history, selectedSourceRaceId, onSele
     const [, month, day] = date.split('-');
     return `${Number(month)}/${Number(day)}`;
   };
+  const colors = historySeriesColors(container);
   // Percentiles are higher-is-better: plot them upward, bounded to 0..100.
   lineChart(slot('overallTrend'), {
     ariaLabel: 'Overall percentile across archived events',
@@ -89,7 +91,7 @@ export function renderHistory(container, { history, selectedSourceRaceId, onSele
     series: [
       {
         name: 'Overall percentile',
-        color: '#2a78d6',
+        color: colors.overall,
         values: history.trends?.overallPercentiles ?? races.map((race) => race.overallPercentile)
       }
     ]
@@ -104,7 +106,7 @@ export function renderHistory(container, { history, selectedSourceRaceId, onSele
     series: [
       {
         name: 'Class percentile',
-        color: '#1baf7a',
+        color: colors.class,
         values: history.trends?.classPercentiles ?? races.map((race) => race.classPercentile)
       }
     ]

@@ -67,6 +67,21 @@ describe('history dashboard', () => {
     expect(container.querySelectorAll('[data-slot="ledger"] button')).toHaveLength(1);
   });
 
+  it('uses the shared history series colors from CSS variables', () => {
+    container.style.setProperty('--series-overall', '#111111');
+    container.style.setProperty('--series-class', '#222222');
+
+    renderHistory(container, {
+      history,
+      selectedSourceRaceId: 'livelaps:79103',
+      onSelectRace: vi.fn()
+    });
+
+    const trendCards = container.querySelectorAll('.history-trends [data-slot$="Trend"]');
+    expect(trendCards[0].querySelector('path')?.getAttribute('stroke')).toBe('#111111');
+    expect(trendCards[1].querySelector('path')?.getAttribute('stroke')).toBe('#222222');
+  });
+
   it('selects a race when its ledger row is clicked, same as the picker', () => {
     const onSelectRace = vi.fn();
     renderHistory(container, {
