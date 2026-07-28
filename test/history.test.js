@@ -82,6 +82,34 @@ describe('history dashboard', () => {
     expect(trendCards[1].querySelector('path')?.getAttribute('stroke')).toBe('#222222');
   });
 
+  it('renders Comparison Rider overall-percentile series on Anchor Racer rounds', () => {
+    container.style.setProperty('--series-comparison-1', '#333333');
+
+    renderHistory(container, {
+      history,
+      selectedSourceRaceId: 'livelaps:79103',
+      onSelectRace: vi.fn(),
+      comparisonHistories: [
+        {
+          slot: 0,
+          racerName: 'Bea Brown',
+          races: [
+            {
+              sourceRaceId: 'livelaps:79103',
+              overallPercentile: 70,
+              classPercentile: 80
+            }
+          ]
+        }
+      ]
+    });
+
+    const overallTrend = container.querySelector('[data-slot="overallTrend"]');
+    expect(overallTrend.querySelectorAll('path')).toHaveLength(2);
+    expect(overallTrend.querySelectorAll('path')[1].getAttribute('stroke')).toBe('#333333');
+    expect(overallTrend.querySelectorAll('circle.pt')).toHaveLength(3);
+  });
+
   it('selects a race when its ledger row is clicked, same as the picker', () => {
     const onSelectRace = vi.fn();
     renderHistory(container, {

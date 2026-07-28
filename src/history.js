@@ -27,6 +27,17 @@ function raceDate(race) {
   return race.eventDateProvenance === 'source' ? race.eventDate : `${race.eventDate} (unverified)`;
 }
 
+function comparisonTrendSeries(races, comparisonHistories, colors, metric) {
+  return comparisonHistories.map((comparison, index) => {
+    const raceById = new Map((comparison.races ?? []).map((race) => [race.sourceRaceId, race]));
+    return {
+      name: comparison.racerName,
+      color: colors.comparisons[comparison.slot ?? index],
+      values: races.map((race) => raceById.get(race.sourceRaceId)?.[metric] ?? null)
+    };
+  });
+}
+
 function renderCandidateList(container, candidates, onAddComparisonRider) {
   container.innerHTML = '';
   candidates.forEach((candidate) => {
@@ -49,6 +60,7 @@ export function renderHistory(
     selectedSourceRaceId,
     onSelectRace,
     comparisonCandidates = [],
+    comparisonHistories = [],
     onAddComparisonRider,
     onSearchComparisonRiders
   }
@@ -110,6 +122,7 @@ export function renderHistory(
     const candidates = await onSearchComparisonRiders(event.target.value);
     renderCandidateList(comparisonCandidateList, candidates, onAddComparisonRider);
   });
+
   if (races.length === 0) {
     slot('historyData').textContent = 'No archived events yet.';
     return;
@@ -139,7 +152,8 @@ export function renderHistory(
         name: 'Overall percentile',
         color: colors.overall,
         values: history.trends?.overallPercentiles ?? races.map((race) => race.overallPercentile)
-      }
+      },
+      ...comparisonTrendSeries(races, comparisonHistories, colors, 'overallPercentile')
     ]
   });
   lineChart(slot('classTrend'), {

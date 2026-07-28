@@ -174,6 +174,58 @@ it('loads Shared Round picker candidates and adds a rider into the URL', async (
   expect(new URLSearchParams(location.search).get('compare1')).toBe('bea brown');
 });
 
+it('loads Comparison Rider histories from URL slots', async () => {
+  api.sourceRace.mockResolvedValueOnce(archivedRace([AXEL_ENTRY]));
+  api.history
+    .mockResolvedValueOnce({
+      racerName: 'Axel Anderson',
+      races: [
+        {
+          sourceRaceId: 'livelaps:79103',
+          raceName: 'Test Enduro',
+          eventDate: '2026-07-12',
+          eventDateProvenance: 'source',
+          provider: 'livelaps',
+          overallPosition: 2,
+          fieldSize: 45,
+          overallPercentile: 98,
+          classPosition: 1,
+          classSize: 12,
+          classPercentile: 100,
+          totalTimeSeconds: 7200
+        }
+      ],
+      trends: { overallPercentiles: [98], classPercentiles: [100] }
+    })
+    .mockResolvedValueOnce({
+      racerName: 'Bea Brown',
+      races: [
+        {
+          sourceRaceId: 'livelaps:79103',
+          raceName: 'Test Enduro',
+          eventDate: '2026-07-12',
+          eventDateProvenance: 'source',
+          provider: 'livelaps',
+          overallPosition: 5,
+          fieldSize: 45,
+          overallPercentile: 91,
+          classPosition: 2,
+          classSize: 8,
+          classPercentile: 88,
+          totalTimeSeconds: 7300
+        }
+      ],
+      trends: { overallPercentiles: [91], classPercentiles: [88] }
+    });
+  history.replaceState({}, '', '/?race=livelaps%3A79103&id=4758874&compare1=bea%20brown');
+
+  await import('../src/main.js?comparison-histories');
+
+  await vi.waitFor(() => expect(api.history).toHaveBeenCalledWith('bea brown'));
+  const overallTrend = document.querySelector('[data-slot="overallTrend"]');
+  expect(overallTrend.querySelectorAll('path')).toHaveLength(2);
+});
+
 it('changes only race detail when a history race is selected', async () => {
   const motoRace = {
     ...archivedRace([AXEL_ENTRY]),

@@ -139,10 +139,21 @@ async function showDashboard(raceId, participantId, loadedRace, ingestInput, kno
       } catch (error) {
         console.error(error);
       }
+      const comparisonSet = comparisonSetFromParams(new URLSearchParams(window.location.search));
+      const comparisonHistories = (
+        await Promise.all(
+          comparisonSet.map(async (normalizedComparisonName, slot) => {
+            if (!normalizedComparisonName) return null;
+            const comparisonHistory = await archiveApi.history(normalizedComparisonName);
+            return { ...comparisonHistory, slot, normalizedName: normalizedComparisonName };
+          })
+        )
+      ).filter(Boolean);
       renderHistory(historyPanel, {
         history: racerHistory,
         selectedSourceRaceId: race.raceId,
         comparisonCandidates,
+        comparisonHistories,
         onAddComparisonRider: (comparisonRiderName) => {
           const params = new URLSearchParams(window.location.search);
           addComparisonRider(params, comparisonRiderName, normalizedName);
