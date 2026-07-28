@@ -110,6 +110,47 @@ describe('history dashboard', () => {
     expect(overallTrend.querySelectorAll('circle.pt')).toHaveLength(3);
   });
 
+  it('omits other-class Comparison Riders from class-percentile comparison with a named note', () => {
+    renderHistory(container, {
+      history: {
+        ...history,
+        races: history.races.map((race) => ({ ...race, className: 'A 40+' }))
+      },
+      selectedSourceRaceId: 'livelaps:79103',
+      onSelectRace: vi.fn(),
+      comparisonHistories: [
+        {
+          slot: 0,
+          racerName: 'Bea Brown',
+          races: [
+            {
+              sourceRaceId: 'livelaps:79103',
+              className: 'A 40+',
+              overallPercentile: 70,
+              classPercentile: 80
+            }
+          ]
+        },
+        {
+          slot: 1,
+          racerName: 'Cal Chen',
+          races: [
+            {
+              sourceRaceId: 'livelaps:79103',
+              className: 'Pro',
+              overallPercentile: 95,
+              classPercentile: 100
+            }
+          ]
+        }
+      ]
+    });
+
+    expect(container.querySelector('[data-slot="overallTrend"]').querySelectorAll('path')).toHaveLength(3);
+    expect(container.querySelector('[data-slot="classTrend"]').querySelectorAll('path')).toHaveLength(2);
+    expect(container.textContent).toContain('Cal Chen omitted from class percentile because they are outside A 40+');
+  });
+
   it('selects a race when its ledger row is clicked, same as the picker', () => {
     const onSelectRace = vi.fn();
     renderHistory(container, {

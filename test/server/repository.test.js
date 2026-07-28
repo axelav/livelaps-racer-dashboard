@@ -375,6 +375,7 @@ describe('history transforms', () => {
         eventDate: '2026-06-01',
         eventDateProvenance: 'source',
         fullName: 'Áxel-Anderson',
+        className: 'A 40+',
         overallPosition: 2,
         fieldSize: 17,
         classPosition: 1,
@@ -388,6 +389,7 @@ describe('history transforms', () => {
         eventDate: '2026-07-12',
         eventDateProvenance: 'source',
         fullName: 'AXEL ANDERSON',
+        className: 'A 40+',
         overallPosition: 7,
         fieldSize: 24,
         classPosition: 2,
@@ -398,6 +400,7 @@ describe('history transforms', () => {
 
     expect(history.racerName).toBe('Áxel-Anderson');
     expect(history.races.map((race) => race.provider)).toEqual(['livelaps', 'mototally']);
+    expect(history.races.map((race) => race.className)).toEqual(['A 40+', 'A 40+']);
     expect(history.trends.overallPercentiles).toEqual([94, 75]);
     expect(history.trends.classPercentiles).toEqual([100, 80]);
   });

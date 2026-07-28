@@ -38,6 +38,30 @@ function comparisonTrendSeries(races, comparisonHistories, colors, metric) {
   });
 }
 
+function classComparisonTrendSeries(races, comparisonHistories, colors) {
+  const omitted = [];
+  const series = [];
+  comparisonHistories.forEach((comparison, index) => {
+    const raceById = new Map((comparison.races ?? []).map((race) => [race.sourceRaceId, race]));
+    const values = races.map((race) => {
+      const comparisonRace = raceById.get(race.sourceRaceId);
+      return comparisonRace?.className && race.className === comparisonRace.className
+        ? comparisonRace.classPercentile
+        : null;
+    });
+    if (values.some((value) => value != null)) {
+      series.push({
+        name: comparison.racerName,
+        color: colors.comparisons[comparison.slot ?? index],
+        values
+      });
+    } else {
+      omitted.push(comparison.racerName);
+    }
+  });
+  return { omitted, series };
+}
+
 function renderCandidateList(container, candidates, onAddComparisonRider) {
   container.innerHTML = '';
   candidates.forEach((candidate) => {
@@ -94,6 +118,7 @@ export function renderHistory(
           <div class="card">
             <h3>Class percentile</h3>
             <p class="card-sub">Relative to the racer's class at each archived event</p>
+            <p class="card-sub" data-slot="classComparisonNote"></p>
             <div data-slot="classTrend"></div>
           </div>
         </div>
@@ -139,6 +164,11 @@ export function renderHistory(
     return `${Number(month)}/${Number(day)}`;
   };
   const colors = historySeriesColors(container);
+  const classComparison = classComparisonTrendSeries(races, comparisonHistories, colors);
+  if (classComparison.omitted.length > 0) {
+    const anchorClass = races.find((race) => race.className)?.className ?? 'the Anchor Racer class';
+    slot('classComparisonNote').textContent = `${classComparison.omitted.join(', ')} omitted from class percentile because they are outside ${anchorClass}`;
+  }
   // Percentiles are higher-is-better: plot them upward, bounded to 0..100.
   lineChart(slot('overallTrend'), {
     ariaLabel: 'Overall percentile across archived events',
@@ -168,7 +198,8 @@ export function renderHistory(
         name: 'Class percentile',
         color: colors.class,
         values: history.trends?.classPercentiles ?? races.map((race) => race.classPercentile)
-      }
+      },
+      ...classComparison.series
     ]
   });
 
