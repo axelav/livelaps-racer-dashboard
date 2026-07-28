@@ -3,7 +3,7 @@ import { archiveApi, archivedRaceFromResponse } from './api.js';
 import { renderSearch } from './search.js';
 import { renderDashboard } from './dashboard.js';
 import { normalizeRacerName, renderHistory } from './history.js';
-import { comparisonSetFromParams, writeComparisonSet } from './comparisonSet.js';
+import { addComparisonRider, comparisonSetFromParams, writeComparisonSet } from './comparisonSet.js';
 
 const app = document.getElementById('app');
 let requestId = 0;
@@ -132,10 +132,28 @@ async function showDashboard(raceId, participantId, loadedRace, ingestInput, kno
       }
     });
 
-    const renderRacerHistory = (racerHistory) => {
+    const renderRacerHistory = async (racerHistory) => {
+      let comparisonCandidates = [];
+      try {
+        comparisonCandidates = (await archiveApi.comparisonCandidates(normalizedName)).riders ?? [];
+      } catch (error) {
+        console.error(error);
+      }
       renderHistory(historyPanel, {
         history: racerHistory,
         selectedSourceRaceId: race.raceId,
+        comparisonCandidates,
+        onAddComparisonRider: (comparisonRiderName) => {
+          const params = new URLSearchParams(window.location.search);
+          addComparisonRider(params, comparisonRiderName, normalizedName);
+          history.pushState(
+            {},
+            '',
+            dashboardUrl(race.raceId, participantId, comparisonSetFromParams(params))
+          );
+        },
+        onSearchComparisonRiders: async (query) =>
+          (await archiveApi.comparisonCandidates(normalizedName, query)).riders ?? [],
         onSelectRace: async (selectedRaceId) => {
           if (selectedRaceId === race.raceId) return;
           const pickerRequest = ++requestId;
@@ -162,8 +180,8 @@ async function showDashboard(raceId, participantId, loadedRace, ingestInput, kno
       historyPanel.textContent = 'Loading history…';
       archiveApi
         .history(normalizedName)
-        .then((racerHistory) => {
-          if (thisRequest === requestId) renderRacerHistory(racerHistory);
+        .then(async (racerHistory) => {
+          if (thisRequest === requestId) await renderRacerHistory(racerHistory);
         })
         .catch((error) => {
           if (thisRequest !== requestId) return;

@@ -7,7 +7,8 @@ const api = vi.hoisted(() => ({
   ingest: vi.fn(),
   refresh: vi.fn(),
   sourceRace: vi.fn(),
-  history: vi.fn()
+  history: vi.fn(),
+  comparisonCandidates: vi.fn()
 }));
 
 vi.mock('../src/api.js', () => ({
@@ -47,6 +48,9 @@ beforeEach(() => {
     racerName: 'Axel Anderson',
     races: [],
     trends: { overallPercentiles: [], classPercentiles: [] }
+  });
+  api.comparisonCandidates.mockResolvedValue({
+    riders: [{ normalizedName: 'bea brown', fullName: 'Bea Brown', sharedRoundCount: 1 }]
   });
   document.body.innerHTML = '<div id="app"></div>';
   history.replaceState({}, '', '/');
@@ -135,6 +139,39 @@ it('loads all archived history for the selected racer without changing race deta
     'History dashboard'
   );
   expect(document.querySelector('[data-slot="historyPanel"]')?.closest('.viz-root')).not.toBeNull();
+});
+
+it('loads Shared Round picker candidates and adds a rider into the URL', async () => {
+  api.sourceRace.mockResolvedValueOnce(archivedRace([AXEL_ENTRY]));
+  api.history.mockResolvedValueOnce({
+    racerName: 'Axel Anderson',
+    races: [
+      {
+        sourceRaceId: 'livelaps:79103',
+        raceName: 'Test Enduro',
+        eventDate: '2026-07-12',
+        eventDateProvenance: 'source',
+        provider: 'livelaps',
+        overallPosition: 2,
+        fieldSize: 45,
+        overallPercentile: 98,
+        classPosition: 1,
+        classSize: 12,
+        classPercentile: 100,
+        totalTimeSeconds: 7200
+      }
+    ],
+    trends: { overallPercentiles: [98], classPercentiles: [100] }
+  });
+  history.replaceState({}, '', '/?race=livelaps%3A79103&id=4758874');
+
+  await import('../src/main.js?comparison-picker');
+
+  await vi.waitFor(() => expect(api.comparisonCandidates).toHaveBeenCalledWith('axel anderson'));
+  document.querySelector('[data-slot="comparisonToggle"]').click();
+  document.querySelector('[data-candidate="bea brown"]').click();
+
+  expect(new URLSearchParams(location.search).get('compare1')).toBe('bea brown');
 });
 
 it('changes only race detail when a history race is selected', async () => {

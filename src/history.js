@@ -27,7 +27,32 @@ function raceDate(race) {
   return race.eventDateProvenance === 'source' ? race.eventDate : `${race.eventDate} (unverified)`;
 }
 
-export function renderHistory(container, { history, selectedSourceRaceId, onSelectRace }) {
+function renderCandidateList(container, candidates, onAddComparisonRider) {
+  container.innerHTML = '';
+  candidates.forEach((candidate) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'comparison-candidate';
+    button.dataset.candidate = candidate.normalizedName;
+    button.textContent = `${candidate.fullName} · ${candidate.sharedRoundCount} shared ${
+      candidate.sharedRoundCount === 1 ? 'round' : 'rounds'
+    }`;
+    button.addEventListener('click', () => onAddComparisonRider?.(candidate.normalizedName));
+    container.appendChild(button);
+  });
+}
+
+export function renderHistory(
+  container,
+  {
+    history,
+    selectedSourceRaceId,
+    onSelectRace,
+    comparisonCandidates = [],
+    onAddComparisonRider,
+    onSearchComparisonRiders
+  }
+) {
   const races = history.races ?? [];
   container.innerHTML = `
     <section class="history-dashboard" aria-label="Racer history dashboard">
@@ -35,6 +60,16 @@ export function renderHistory(container, { history, selectedSourceRaceId, onSele
         <div>
           <p class="eyebrow">History dashboard</p>
           <h2 data-slot="racerName"></h2>
+        </div>
+        <div class="history-actions">
+          <button type="button" data-slot="comparisonToggle">Compare riders</button>
+          <div class="comparison-picker" data-slot="comparisonPicker" hidden>
+            <label>
+              Search riders
+              <input type="search" data-slot="comparisonSearch" autocomplete="off">
+            </label>
+            <div data-slot="comparisonCandidates"></div>
+          </div>
         </div>
       </div>
       <div data-slot="historyData">
@@ -64,6 +99,17 @@ export function renderHistory(container, { history, selectedSourceRaceId, onSele
   const slot = (name) => container.querySelector(`[data-slot="${name}"]`);
   slot('racerName').textContent = history.racerName ?? 'Racer history';
 
+  const comparisonPicker = slot('comparisonPicker');
+  const comparisonCandidateList = slot('comparisonCandidates');
+  renderCandidateList(comparisonCandidateList, comparisonCandidates, onAddComparisonRider);
+  slot('comparisonToggle').addEventListener('click', () => {
+    comparisonPicker.hidden = !comparisonPicker.hidden;
+  });
+  slot('comparisonSearch').addEventListener('input', async (event) => {
+    if (!onSearchComparisonRiders) return;
+    const candidates = await onSearchComparisonRiders(event.target.value);
+    renderCandidateList(comparisonCandidateList, candidates, onAddComparisonRider);
+  });
   if (races.length === 0) {
     slot('historyData').textContent = 'No archived events yet.';
     return;

@@ -95,6 +95,37 @@ describe('history dashboard', () => {
     expect(onSelectRace).toHaveBeenCalledWith('mototally:ECEA/Enduro/2026/6/O1');
   });
 
+  it('opens a Comparison Rider picker with Shared Round suggestions and search', async () => {
+    const onAddComparisonRider = vi.fn();
+    const onSearchComparisonRiders = vi.fn(async () => [
+      { normalizedName: 'cal chen', fullName: 'Cal Chen', sharedRoundCount: 1 }
+    ]);
+    renderHistory(container, {
+      history,
+      selectedSourceRaceId: 'livelaps:79103',
+      onSelectRace: vi.fn(),
+      comparisonCandidates: [
+        { normalizedName: 'bea brown', fullName: 'Bea Brown', sharedRoundCount: 2 }
+      ],
+      onAddComparisonRider,
+      onSearchComparisonRiders
+    });
+
+    container.querySelector('[data-slot="comparisonToggle"]').click();
+    expect(container.textContent).toContain('Bea Brown');
+    expect(container.textContent).toContain('2 shared rounds');
+
+    container.querySelector('[data-candidate="bea brown"]').click();
+    expect(onAddComparisonRider).toHaveBeenCalledWith('bea brown');
+
+    const input = container.querySelector('[data-slot="comparisonSearch"]');
+    input.value = 'cal';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+
+    await vi.waitFor(() => expect(onSearchComparisonRiders).toHaveBeenCalledWith('cal'));
+    await vi.waitFor(() => expect(container.textContent).toContain('Cal Chen'));
+  });
+
   it('shows a safe empty state without rendering invalid trend charts', () => {
     renderHistory(container, {
       history: { racerName: 'Axel Anderson', races: [], trends: {} },

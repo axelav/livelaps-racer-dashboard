@@ -235,6 +235,39 @@ describe('archive repository', () => {
     expect(archive.findRacers('')).toEqual([]);
   });
 
+  it('finds Comparison Rider candidates ranked by Shared Round count', () => {
+    const first = loadedRace({ sourceRaceId: 'first', eventDate: '2026-06-01' });
+    first.normalized.allResults = [
+      { ...first.normalized.allResults[0], fullName: 'Axel Anderson', id: 'anchor-1' },
+      { ...first.normalized.allResults[1], fullName: 'Bea Brown', id: 'bea-1' },
+      { ...first.normalized.allResults[1], fullName: 'Cal Chen', id: 'cal-1' }
+    ];
+    const second = loadedRace({ sourceRaceId: 'second', eventDate: '2026-06-08' });
+    second.normalized.allResults = [
+      { ...second.normalized.allResults[0], fullName: 'Axel Anderson', id: 'anchor-2' },
+      { ...second.normalized.allResults[1], fullName: 'Bea Brown', id: 'bea-2' },
+      { ...second.normalized.allResults[1], fullName: 'Dan Diaz', id: 'dan-1' }
+    ];
+    const unshared = loadedRace({ sourceRaceId: 'unshared', eventDate: '2026-06-15' });
+    unshared.normalized.allResults = [
+      { ...unshared.normalized.allResults[1], fullName: 'Bea Brown', id: 'bea-3' },
+      { ...unshared.normalized.allResults[1], fullName: 'Eli Evans', id: 'eli-1' }
+    ];
+
+    archive.saveSnapshot(first, CAPTURED_AT);
+    archive.saveSnapshot(second, CAPTURED_AT);
+    archive.saveSnapshot(unshared, CAPTURED_AT);
+
+    expect(archive.findComparisonCandidates(normalizeRacerName('Axel Anderson'))).toEqual([
+      { normalizedName: 'bea brown', fullName: 'Bea Brown', sharedRoundCount: 2 },
+      { normalizedName: 'cal chen', fullName: 'Cal Chen', sharedRoundCount: 1 },
+      { normalizedName: 'dan diaz', fullName: 'Dan Diaz', sharedRoundCount: 1 }
+    ]);
+    expect(archive.findComparisonCandidates(normalizeRacerName('Axel Anderson'), 'bea')).toEqual([
+      { normalizedName: 'bea brown', fullName: 'Bea Brown', sharedRoundCount: 2 }
+    ]);
+  });
+
   it('returns only matching current entries in event-date order', () => {
     archive.saveSnapshot(
       loadedRace({
