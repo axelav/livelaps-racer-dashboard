@@ -104,9 +104,23 @@ export function roundedTopRectPath(x, y, w, h, r) {
   ].join(' ');
 }
 
+const MAX_X_TICKS = 6;
+
+function clampedValue(v, min, max) {
+  let next = v;
+  if (min != null) next = Math.max(min, next);
+  if (max != null) next = Math.min(max, next);
+  return next;
+}
+
+function sparseTickIndexes(count, maxTicks) {
+  if (count <= maxTicks) return new Set(Array.from({ length: count }, (_, i) => i));
+  return new Set(Array.from({ length: maxTicks }, (_, i) => Math.round((i * (count - 1)) / (maxTicks - 1))));
+}
+
 export function lineChart(container, opts) {
   const W = 520, H = 220;
-  const padL = 34, padR = 16, padT = 16, padB = 26;
+  const padL = 34, padR = 44, padT = 16, padB = 32;
   const plotL = padL, plotR = W - padR, plotT = padT, plotB = H - padB;
   const labels = opts.labels;
   const n = labels.length;
@@ -128,13 +142,13 @@ export function lineChart(container, opts) {
 
   const svg = el('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': opts.ariaLabel || '' });
   function xAt(i) {
-    return plotL + (i / (n - 1)) * (plotR - plotL);
+    return n <= 1 ? (plotL + plotR) / 2 : plotL + (i / (n - 1)) * (plotR - plotL);
   }
   function yAt(v) {
     // invert defaults on: these charts mostly plot positions, where lower is
     // better and belongs at the top. Pass invert: false for higher-is-better
     // series (percentiles).
-    return scaleY(v, domain.min, domain.max, plotT, plotB, opts.invert !== false);
+    return scaleY(clampedValue(v, opts.clampMin, opts.clampMax), domain.min, domain.max, plotT, plotB, opts.invert !== false);
   }
 
   domain.ticks.forEach((t) => {
@@ -147,7 +161,9 @@ export function lineChart(container, opts) {
   });
   svg.appendChild(el('line', { class: 'axis-line', x1: plotL, x2: plotL, y1: plotT, y2: plotB }));
 
+  const xTickIndexes = sparseTickIndexes(n, opts.maxXTicks ?? n);
   labels.forEach((_, i) => {
+    if (!xTickIndexes.has(i)) return;
     const lbl = el('text', { class: 'tick-label', x: xAt(i), y: H - 8, 'text-anchor': 'middle' });
     lbl.textContent = opts.xTick ? opts.xTick(i) : `S${i + 1}`;
     svg.appendChild(lbl);
@@ -178,8 +194,9 @@ export function lineChart(container, opts) {
     let lastI = s.values.length - 1;
     while (lastI >= 0 && s.values[lastI] == null) lastI--;
     if (lastI < 0) return;
-    const endLabel = el('text', { class: 'end-label', x: xAt(lastI) + 8, y: yAt(s.values[lastI]) - 8, 'text-anchor': 'start' });
-    endLabel.textContent = Math.round(s.values[lastI]) + (opts.suffix || '');
+    const endValue = clampedValue(s.values[lastI], opts.clampMin, opts.clampMax);
+    const endLabel = el('text', { class: 'end-label', x: xAt(lastI) + 8, y: yAt(endValue) - 8, 'text-anchor': 'start' });
+    endLabel.textContent = Math.round(endValue) + (opts.suffix || '');
     svg.appendChild(endLabel);
   });
 

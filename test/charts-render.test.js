@@ -39,6 +39,30 @@ describe('lineChart domain clamping', () => {
   });
 });
 
+describe('lineChart x-axis labels', () => {
+  function xTickLabels(container) {
+    return Array.from(container.querySelectorAll('text.tick-label'))
+      .filter((t) => t.getAttribute('text-anchor') === 'middle')
+      .map((t) => t.textContent);
+  }
+
+  it('uses sparse date anchors for dense history charts', () => {
+    const labels = Array.from({ length: 24 }, (_, i) => `race ${i + 1}`);
+    const c = render({
+      labels,
+      xTick: (i) => `8/${i + 1}`,
+      maxXTicks: 6,
+      series: [{ name: 'pct', color: '#000', values: labels.map((_, i) => i) }]
+    });
+
+    const ticks = xTickLabels(c);
+    expect(ticks.length).toBeLessThanOrEqual(6);
+    expect(ticks[0]).toBe('8/1');
+    expect(ticks.at(-1)).toBe('8/24');
+  });
+});
+
+
 describe('lineChart axis direction', () => {
   function pointYs(container) {
     return Array.from(container.querySelectorAll('circle.pt')).map((p) => Number(p.getAttribute('cy')));
@@ -61,5 +85,20 @@ describe('lineChart axis direction', () => {
     });
     const [first, second] = pointYs(c);
     expect(second).toBeLessThan(first);
+  });
+});
+
+describe('lineChart clamped values', () => {
+  it('keeps out-of-range percentile points inside the plot area', () => {
+    const c = render({
+      labels: ['bad low', 'bad high'],
+      invert: false,
+      clampMin: 0,
+      clampMax: 100,
+      series: [{ name: 'pct', color: '#000', values: [-20, 120] }]
+    });
+
+    const pointYs = Array.from(c.querySelectorAll('circle.pt')).map((p) => Number(p.getAttribute('cy')));
+    expect(pointYs.every((y) => y >= 16 && y <= 194)).toBe(true);
   });
 });

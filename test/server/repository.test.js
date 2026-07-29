@@ -331,6 +331,7 @@ describe('history transforms', () => {
     expect(toPercentile(1, 4)).toBe(100);
     expect(toPercentile(2, 4)).toBe(75);
     expect(toPercentile(1, 0)).toBeNull();
+    expect(toPercentile(176, 117)).toBe(0);
   });
 
   it('builds separate provider races and percentile trends from matching entries', () => {

@@ -49,13 +49,26 @@ export function renderHistory(container, { history, selectedSourceRaceId, onSele
             <div data-slot="classTrend"></div>
           </div>
         </div>
-        <section class="history-ledger">
-          <h3>Results ledger</h3>
-          <table class="data-table">
-            <thead><tr><th>Date</th><th>Race</th><th>Source</th><th>Overall</th><th>Class</th><th>Result</th></tr></thead>
-            <tbody data-slot="ledger"></tbody>
-          </table>
+        <section class="history-ledger-summary" aria-label="Results ledger summary">
+          <div>
+            <h3>Results ledger</h3>
+            <p class="card-sub" data-slot="ledgerSummary"></p>
+          </div>
+          <button type="button" class="secondary-action" data-slot="openLedger"></button>
         </section>
+        <dialog class="ledger-dialog" data-slot="ledgerDialog" aria-labelledby="ledgerTitle">
+          <div class="ledger-dialog-head">
+            <div>
+              <h3 id="ledgerTitle">Results ledger</h3>
+              <p class="card-sub" data-slot="ledgerDialogSummary"></p>
+            </div>
+            <button type="button" class="dialog-close" data-slot="closeLedger" aria-label="Close results ledger">Close</button>
+          </div>
+          <table class="data-table ledger-table">
+            <thead><tr><th>Date</th><th>Race</th><th>Source</th><th>Overall</th><th>Class</th><th>Result</th></tr></thead>
+            <tbody data-slot="ledgerRows"></tbody>
+          </table>
+        </dialog>
       </div>
     </section>
   `;
@@ -67,6 +80,27 @@ export function renderHistory(container, { history, selectedSourceRaceId, onSele
     slot('historyData').textContent = 'No archived events yet.';
     return;
   }
+
+  const resultLabel = races.length === 1 ? '1 result' : `${races.length} results`;
+  slot('ledgerSummary').textContent = `${resultLabel} across archived events`;
+  slot('ledgerDialogSummary').textContent = `${resultLabel} across archived events`;
+  slot('openLedger').textContent = `View results ledger (${resultLabel})`;
+
+  const ledgerDialog = slot('ledgerDialog');
+  slot('openLedger').addEventListener('click', () => {
+    if (typeof ledgerDialog.showModal === 'function') {
+      ledgerDialog.showModal();
+    } else {
+      ledgerDialog.setAttribute('open', '');
+    }
+  });
+  slot('closeLedger').addEventListener('click', () => {
+    if (typeof ledgerDialog.close === 'function') {
+      ledgerDialog.close();
+    } else {
+      ledgerDialog.removeAttribute('open');
+    }
+  });
 
   // Tooltip titles carry the full story; axis ticks compress to short dates.
   const labels = races.map((race) =>
@@ -83,6 +117,7 @@ export function renderHistory(container, { history, selectedSourceRaceId, onSele
     ariaLabel: 'Overall percentile across archived events',
     labels,
     xTick: dateTick,
+    maxXTicks: 6,
     invert: false,
     clampMin: 0,
     clampMax: 100,
@@ -98,6 +133,7 @@ export function renderHistory(container, { history, selectedSourceRaceId, onSele
     ariaLabel: 'Class percentile across archived events',
     labels,
     xTick: dateTick,
+    maxXTicks: 6,
     invert: false,
     clampMin: 0,
     clampMax: 100,
@@ -110,7 +146,7 @@ export function renderHistory(container, { history, selectedSourceRaceId, onSele
     ]
   });
 
-  const ledger = slot('ledger');
+  const ledger = slot('ledgerRows');
   races.forEach((race) => {
     const row = document.createElement('tr');
     const isSelected = race.sourceRaceId === selectedSourceRaceId;
@@ -122,8 +158,9 @@ export function renderHistory(container, { history, selectedSourceRaceId, onSele
       `${race.overallPosition ?? '—'} / ${race.fieldSize ?? '—'}`,
       `${race.classPosition ?? '—'} / ${race.classSize ?? '—'}`,
       race.totalPoints != null ? `${race.totalPoints} pts` : formatDuration(race.totalTimeSeconds)
-    ].forEach((value) => {
+    ].forEach((value, index) => {
       const cell = document.createElement('td');
+      cell.dataset.label = ['Date', 'Race', 'Source', 'Overall', 'Class', 'Result'][index];
       if (value === race) {
         // the selected race isn't a link — it's what's already on screen
         if (isSelected) {
