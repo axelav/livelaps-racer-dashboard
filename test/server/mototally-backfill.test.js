@@ -35,8 +35,18 @@ function calendarHtml() {
 </table>`;
 }
 
-function resultHtml({ name = '2024 Greenbrier Enduro', groups = ['O1'], ama = 111 } = {}) {
-  const options = groups.map((group) => `<option value="${group}">OVERALL ${group}</option>`).join('');
+function resultHtml({
+  name = '2024 Greenbrier Enduro',
+  groups = [{ value: 'O1', label: 'OVERALL Long Course' }],
+  ama = 111
+} = {}) {
+  const options = groups
+    .map((group) => {
+      const value = typeof group === 'string' ? group : group.value;
+      const label = typeof group === 'string' ? `OVERALL ${group}` : group.label;
+      return `<option value="${value}">${label}</option>`;
+    })
+    .join('');
   return `
 <h1 id="mtR_h1RREventName">${name}</h1>
 <select id="mtR_ddlSelectClass">${options}<option value="C1">AA</option></select>
@@ -106,6 +116,48 @@ describe('createCachedMotoTallyFetch', () => {
 });
 
 describe('backfillMotoTallyArchive', () => {
+  it('archives course overall groups and skips A B C category overall pages', async () => {
+    const db = openDatabase(':memory:');
+    const archive = createArchive(db);
+    const groups = [
+      { value: 'O1', label: 'OVERALL Long Course' },
+      { value: 'O2', label: 'OVERALL A' },
+      { value: 'O3', label: 'OVERALL B' },
+      { value: 'O4', label: 'OVERALL C' },
+      { value: 'O5', label: 'Overall Short' }
+    ];
+    const upstream = vi.fn(async (url) => {
+      if (url === ECEA_ENDURO_CALENDAR_URL) return responseText(calendarHtml());
+      if (url === O1_URL) return responseText(resultHtml({ groups, ama: 111 }));
+      if (url === O5_URL) return responseText(resultHtml({ groups, ama: 555 }));
+      throw new Error(`Unexpected URL: ${url}`);
+    });
+
+    const summary = await backfillMotoTallyArchive({
+      archive,
+      fetchImpl: upstream,
+      parseHtml: (html) => parseHTML(html).document,
+      sinceYear: 2024,
+      currentYear: 2024,
+      delayMs: 0,
+      capturedAt: () => '2024-03-12T00:00:00.000Z'
+    });
+
+    expect(summary).toMatchObject({
+      discoveredEvents: 1,
+      discoveredSourceRaces: 2,
+      saved: 2,
+      skipped: 0,
+      failures: []
+    });
+    expect(archive.getCurrentSnapshot('mototally:ECEA/Enduro/2024/1/O1')).not.toBeNull();
+    expect(archive.getCurrentSnapshot('mototally:ECEA/Enduro/2024/1/O2')).toBeNull();
+    expect(archive.getCurrentSnapshot('mototally:ECEA/Enduro/2024/1/O3')).toBeNull();
+    expect(archive.getCurrentSnapshot('mototally:ECEA/Enduro/2024/1/O4')).toBeNull();
+    expect(archive.getCurrentSnapshot('mototally:ECEA/Enduro/2024/1/O5')).not.toBeNull();
+    db.close();
+  });
+
   it('skips existing source races without refetching them and archives missing O groups', async () => {
     const db = openDatabase(':memory:');
     const archive = createArchive(db);

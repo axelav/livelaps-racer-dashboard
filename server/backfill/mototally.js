@@ -1,5 +1,5 @@
 import { parseHTML } from 'linkedom';
-import { parseOverallOptions, sanitizeHtml } from '../../src/mototally.js';
+import { sanitizeHtml } from '../../src/mototally.js';
 import { openDatabase } from '../archive/database.js';
 import { createArchive } from '../archive/repository.js';
 import { createSources } from '../sources/index.js';
@@ -148,6 +148,25 @@ function parseResultDoc(html, parseHtml) {
   return parseHtml(sanitizeHtml(html));
 }
 
+function courseOverallOptions(doc) {
+  const select = doc.querySelector('#mtR_ddlSelectClass');
+  if (!select) return [];
+
+  const overallOptions = Array.from(select.querySelectorAll('option'))
+    .map((option) => ({
+      value: option.getAttribute('value'),
+      label: cellText(option).toLowerCase()
+    }))
+    .filter(({ value }) => /^O\d+$/.test(value ?? ''));
+  const courseOptions = overallOptions
+    .filter(({ label }) => !/^overall\s+[abc]$/i.test(label))
+    .map(({ value }) => value);
+
+  return courseOptions.length > 0
+    ? courseOptions
+    : overallOptions.map(({ value }) => value);
+}
+
 async function responseTextOrThrow(response, label) {
   if (!response.ok) throw new Error(`${label} failed: ${response.status}`);
   return response.text();
@@ -168,7 +187,7 @@ async function overallGroupsForEvent(event, { archive, fetchImpl, parseHtml }) {
     doc = parseResultDoc(html, parseHtml);
   }
 
-  const groups = parseOverallOptions(doc);
+  const groups = courseOverallOptions(doc);
   return groups.length > 0 ? groups : ['O1'];
 }
 
