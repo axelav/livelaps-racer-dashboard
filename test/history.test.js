@@ -45,7 +45,7 @@ describe('history dashboard', () => {
     container = document.createElement('div');
   });
 
-  it('renders percentile trends and a chronological ledger with the current race highlighted', () => {
+  it('keeps the results ledger available in an on-demand dialog', () => {
     renderHistory(container, {
       history,
       selectedSourceRaceId: 'livelaps:79103',
@@ -54,17 +54,27 @@ describe('history dashboard', () => {
 
     expect(container.textContent).toContain('Overall percentile');
     expect(container.textContent).toContain('Class percentile');
-    expect(container.textContent).toContain('Results ledger');
-    expect(container.textContent).toContain('2 / 45');
-    expect(container.textContent).toContain('1 / 12');
-    expect(container.textContent).toContain('2:00:34'); // time-scored race
-    expect(container.textContent).toContain('50 pts'); // points-scored race
+    expect(container.querySelector('[data-slot="ledger"]')).toBeNull();
+
+    const openLedger = container.querySelector('[data-slot="openLedger"]');
+    expect(openLedger.textContent).toContain('View results ledger');
+    expect(openLedger.textContent).toContain('2 results');
+
+    openLedger.click();
+
+    const dialog = container.querySelector('[data-slot="ledgerDialog"]');
+    expect(dialog.open).toBe(true);
+    expect(dialog.textContent).toContain('Results ledger');
+    expect(dialog.textContent).toContain('2 / 45');
+    expect(dialog.textContent).toContain('1 / 12');
+    expect(dialog.textContent).toContain('2:00:34'); // time-scored race
+    expect(dialog.textContent).toContain('50 pts'); // points-scored race
 
     // the viewed race is highlighted, not a link; the rest are links
-    const selected = container.querySelector('[data-slot="ledger"] tr.is-selected');
+    const selected = dialog.querySelector('[data-slot="ledgerRows"] tr.is-selected');
     expect(selected.textContent).toContain('Summer Enduro');
     expect(selected.querySelector('button')).toBeNull();
-    expect(container.querySelectorAll('[data-slot="ledger"] button')).toHaveLength(1);
+    expect(dialog.querySelectorAll('[data-slot="ledgerRows"] button')).toHaveLength(1);
   });
 
   it('selects a race when its ledger row is clicked, same as the picker', () => {
@@ -75,7 +85,8 @@ describe('history dashboard', () => {
       onSelectRace
     });
 
-    const rows = container.querySelectorAll('[data-slot="ledger"] tr');
+    container.querySelector('[data-slot="openLedger"]').click();
+    const rows = container.querySelectorAll('[data-slot="ledgerRows"] tr');
     rows[1].querySelector('button').click();
     expect(onSelectRace).toHaveBeenCalledWith('mototally:ECEA/Enduro/2026/6/O1');
   });

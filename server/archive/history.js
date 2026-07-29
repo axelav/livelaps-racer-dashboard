@@ -7,10 +7,11 @@ export function normalizeRacerName(name) {
     .toLocaleLowerCase();
 }
 
-export const toPercentile = (position, size) =>
-  Number.isFinite(position) && Number.isFinite(size) && size > 0
-    ? Math.round((1 - (position - 1) / size) * 100)
-    : null;
+export const toPercentile = (position, size) => {
+  if (!Number.isFinite(position) || !Number.isFinite(size) || size <= 0) return null;
+  const percentile = Math.round((1 - (position - 1) / size) * 100);
+  return Math.max(0, Math.min(100, percentile));
+};
 
 export function buildRacerHistory(entries) {
   const races = entries.map((entry) => ({
