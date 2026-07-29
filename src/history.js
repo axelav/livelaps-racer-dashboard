@@ -91,7 +91,7 @@ function headToHeadLine(anchorName, comparison, races) {
   return `${comparison.racerName} leads ${anchorName} ${comparisonWins}-${anchorWins}`;
 }
 
-function renderComparisonLegend(container, comparisons) {
+function renderComparisonLegend(container, comparisons, colors) {
   container.innerHTML = '';
   if (comparisons.length < 4) return;
   const list = document.createElement('div');
@@ -99,7 +99,11 @@ function renderComparisonLegend(container, comparisons) {
   comparisons.forEach((comparison) => {
     const item = document.createElement('span');
     item.className = 'legend-item';
-    item.textContent = comparison.racerName;
+    const key = document.createElement('span');
+    key.className = 'legend-key';
+    key.style.background = colors.comparisons[comparison.slot];
+    item.appendChild(key);
+    item.append(comparison.racerName);
     list.appendChild(item);
   });
   container.appendChild(list);
@@ -277,7 +281,7 @@ export function renderHistory(
     headRow.appendChild(th);
   });
 
-  renderComparisonLegend(slot('comparisonLegend'), comparisons);
+  renderComparisonLegend(slot('comparisonLegend'), comparisons, colors);
   const ledger = slot('ledger');
   races.forEach((race) => {
     const row = document.createElement('tr');

@@ -143,26 +143,47 @@ it('loads all archived history for the selected racer without changing race deta
 
 it('loads Shared Round picker candidates and adds a rider into the URL', async () => {
   api.sourceRace.mockResolvedValueOnce(archivedRace([AXEL_ENTRY]));
-  api.history.mockResolvedValueOnce({
-    racerName: 'Axel Anderson',
-    races: [
-      {
-        sourceRaceId: 'livelaps:79103',
-        raceName: 'Test Enduro',
-        eventDate: '2026-07-12',
-        eventDateProvenance: 'source',
-        provider: 'livelaps',
-        overallPosition: 2,
-        fieldSize: 45,
-        overallPercentile: 98,
-        classPosition: 1,
-        classSize: 12,
-        classPercentile: 100,
-        totalTimeSeconds: 7200
-      }
-    ],
-    trends: { overallPercentiles: [98], classPercentiles: [100] }
-  });
+  api.history
+    .mockResolvedValueOnce({
+      racerName: 'Axel Anderson',
+      races: [
+        {
+          sourceRaceId: 'livelaps:79103',
+          raceName: 'Test Enduro',
+          eventDate: '2026-07-12',
+          eventDateProvenance: 'source',
+          provider: 'livelaps',
+          overallPosition: 2,
+          fieldSize: 45,
+          overallPercentile: 98,
+          classPosition: 1,
+          classSize: 12,
+          classPercentile: 100,
+          totalTimeSeconds: 7200
+        }
+      ],
+      trends: { overallPercentiles: [98], classPercentiles: [100] }
+    })
+    .mockResolvedValueOnce({
+      racerName: 'Bea Brown',
+      races: [
+        {
+          sourceRaceId: 'livelaps:79103',
+          raceName: 'Test Enduro',
+          eventDate: '2026-07-12',
+          eventDateProvenance: 'source',
+          provider: 'livelaps',
+          overallPosition: 5,
+          fieldSize: 45,
+          overallPercentile: 91,
+          classPosition: 2,
+          classSize: 8,
+          classPercentile: 88,
+          totalTimeSeconds: 7300
+        }
+      ],
+      trends: { overallPercentiles: [91], classPercentiles: [88] }
+    });
   history.replaceState({}, '', '/?race=livelaps%3A79103&id=4758874');
 
   await import('../src/main.js?comparison-picker');
@@ -172,6 +193,9 @@ it('loads Shared Round picker candidates and adds a rider into the URL', async (
   document.querySelector('[data-candidate="bea brown"]').click();
 
   expect(new URLSearchParams(location.search).get('compare1')).toBe('bea brown');
+  await vi.waitFor(() =>
+    expect(document.querySelector('[data-slot="overallTrend"]').querySelectorAll('path')).toHaveLength(2)
+  );
 });
 
 it('loads Comparison Rider histories from URL slots', async () => {
@@ -224,6 +248,64 @@ it('loads Comparison Rider histories from URL slots', async () => {
   await vi.waitFor(() => expect(api.history).toHaveBeenCalledWith('bea brown'));
   const overallTrend = document.querySelector('[data-slot="overallTrend"]');
   expect(overallTrend.querySelectorAll('path')).toHaveLength(2);
+});
+
+it('ignores duplicate URL Comparison Riders without rewriting the slots', async () => {
+  api.sourceRace.mockResolvedValueOnce(archivedRace([AXEL_ENTRY]));
+  api.history
+    .mockResolvedValueOnce({
+      racerName: 'Axel Anderson',
+      races: [
+        {
+          sourceRaceId: 'livelaps:79103',
+          raceName: 'Test Enduro',
+          eventDate: '2026-07-12',
+          eventDateProvenance: 'source',
+          provider: 'livelaps',
+          overallPosition: 2,
+          fieldSize: 45,
+          overallPercentile: 98,
+          classPosition: 1,
+          classSize: 12,
+          classPercentile: 100,
+          totalTimeSeconds: 7200
+        }
+      ],
+      trends: { overallPercentiles: [98], classPercentiles: [100] }
+    })
+    .mockResolvedValueOnce({
+      racerName: 'Bea Brown',
+      races: [
+        {
+          sourceRaceId: 'livelaps:79103',
+          raceName: 'Test Enduro',
+          eventDate: '2026-07-12',
+          eventDateProvenance: 'source',
+          provider: 'livelaps',
+          overallPosition: 5,
+          fieldSize: 45,
+          overallPercentile: 91,
+          classPosition: 2,
+          classSize: 8,
+          classPercentile: 88,
+          totalTimeSeconds: 7300
+        }
+      ],
+      trends: { overallPercentiles: [91], classPercentiles: [88] }
+    });
+  history.replaceState(
+    {},
+    '',
+    '/?race=livelaps%3A79103&id=4758874&compare1=bea%20brown&compare2=bea%20brown'
+  );
+
+  await import('../src/main.js?duplicate-comparison');
+
+  await vi.waitFor(() => expect(api.history).toHaveBeenCalledWith('bea brown'));
+  expect(api.history.mock.calls.filter(([name]) => name === 'bea brown')).toHaveLength(1);
+  expect(new URLSearchParams(location.search).get('compare1')).toBe('bea brown');
+  expect(new URLSearchParams(location.search).get('compare2')).toBe('bea brown');
+  expect(document.querySelector('[data-slot="overallTrend"]').querySelectorAll('path')).toHaveLength(2);
 });
 
 it('renders valid Comparison Riders and leaves URL untouched when shared-link riders fail', async () => {

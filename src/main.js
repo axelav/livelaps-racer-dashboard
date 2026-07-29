@@ -142,6 +142,7 @@ async function showDashboard(raceId, participantId, loadedRace, ingestInput, kno
       const comparisonSet = comparisonSetFromParams(new URLSearchParams(window.location.search));
       const comparisonNotices = [];
       const anchorRoundIds = new Set((racerHistory.races ?? []).map((historyRace) => historyRace.sourceRaceId));
+      const seenComparisonNames = new Set();
       const comparisonHistories = (
         await Promise.all(
           comparisonSet.map(async (normalizedComparisonName, slot) => {
@@ -150,6 +151,11 @@ async function showDashboard(raceId, participantId, loadedRace, ingestInput, kno
               comparisonNotices.push(`${normalizedComparisonName} ignored because it is the Anchor Racer.`);
               return null;
             }
+            if (seenComparisonNames.has(normalizedComparisonName)) {
+              comparisonNotices.push(`${normalizedComparisonName} ignored because it is already in the Comparison Set.`);
+              return null;
+            }
+            seenComparisonNames.add(normalizedComparisonName);
             try {
               const comparisonHistory = await archiveApi.history(normalizedComparisonName);
               const hasSharedRound = (comparisonHistory.races ?? []).some((historyRace) =>
@@ -181,6 +187,7 @@ async function showDashboard(raceId, participantId, loadedRace, ingestInput, kno
             '',
             dashboardUrl(race.raceId, participantId, comparisonSetFromParams(params))
           );
+          renderRacerHistory(racerHistory);
         },
         onSearchComparisonRiders: async (query) =>
           (await archiveApi.comparisonCandidates(normalizedName, query)).riders ?? [],
