@@ -150,7 +150,10 @@ export function renderHistory(container, { history, selectedSourceRaceId, onSele
   races.forEach((race) => {
     const row = document.createElement('tr');
     const isSelected = race.sourceRaceId === selectedSourceRaceId;
-    if (isSelected) row.className = 'is-selected';
+    if (isSelected) {
+      row.className = 'is-selected';
+      row.setAttribute('aria-current', 'true');
+    }
     [
       raceDate(race),
       race,
@@ -164,7 +167,12 @@ export function renderHistory(container, { history, selectedSourceRaceId, onSele
       if (value === race) {
         // the selected race isn't a link — it's what's already on screen
         if (isSelected) {
-          cell.textContent = race.raceName;
+          const raceName = document.createElement('span');
+          raceName.textContent = race.raceName;
+          const current = document.createElement('span');
+          current.className = 'ledger-current-label';
+          current.textContent = 'Current';
+          cell.append(raceName, current);
         } else {
           const link = document.createElement('button');
           link.type = 'button';

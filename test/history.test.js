@@ -73,6 +73,8 @@ describe('history dashboard', () => {
     // the viewed race is highlighted, not a link; the rest are links
     const selected = dialog.querySelector('[data-slot="ledgerRows"] tr.is-selected');
     expect(selected.textContent).toContain('Summer Enduro');
+    expect(selected.getAttribute('aria-current')).toBe('true');
+    expect(selected.querySelector('.ledger-current-label').textContent).toBe('Current');
     expect(selected.querySelector('button')).toBeNull();
     expect(dialog.querySelectorAll('[data-slot="ledgerRows"] button')).toHaveLength(1);
   });
