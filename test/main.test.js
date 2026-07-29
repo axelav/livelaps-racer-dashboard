@@ -226,6 +226,65 @@ it('loads Comparison Rider histories from URL slots', async () => {
   expect(overallTrend.querySelectorAll('path')).toHaveLength(2);
 });
 
+it('renders valid Comparison Riders and leaves URL untouched when shared-link riders fail', async () => {
+  api.sourceRace.mockResolvedValueOnce(archivedRace([AXEL_ENTRY]));
+  api.history
+    .mockResolvedValueOnce({
+      racerName: 'Axel Anderson',
+      races: [
+        {
+          sourceRaceId: 'livelaps:79103',
+          raceName: 'Test Enduro',
+          eventDate: '2026-07-12',
+          eventDateProvenance: 'source',
+          provider: 'livelaps',
+          overallPosition: 2,
+          fieldSize: 45,
+          overallPercentile: 98,
+          classPosition: 1,
+          classSize: 12,
+          classPercentile: 100,
+          totalTimeSeconds: 7200
+        }
+      ],
+      trends: { overallPercentiles: [98], classPercentiles: [100] }
+    })
+    .mockRejectedValueOnce(Object.assign(new Error('not found'), { status: 404 }))
+    .mockResolvedValueOnce({
+      racerName: 'Bea Brown',
+      races: [
+        {
+          sourceRaceId: 'livelaps:79103',
+          raceName: 'Test Enduro',
+          eventDate: '2026-07-12',
+          eventDateProvenance: 'source',
+          provider: 'livelaps',
+          overallPosition: 5,
+          fieldSize: 45,
+          overallPercentile: 91,
+          classPosition: 2,
+          classSize: 8,
+          classPercentile: 88,
+          totalTimeSeconds: 7300
+        }
+      ],
+      trends: { overallPercentiles: [91], classPercentiles: [88] }
+    });
+  history.replaceState(
+    {},
+    '',
+    '/?race=livelaps%3A79103&id=4758874&compare1=missing%20rider&compare2=bea%20brown'
+  );
+
+  await import('../src/main.js?comparison-degradation');
+
+  await vi.waitFor(() => expect(api.history).toHaveBeenCalledWith('bea brown'));
+  expect(new URLSearchParams(location.search).get('compare1')).toBe('missing rider');
+  expect(new URLSearchParams(location.search).get('compare2')).toBe('bea brown');
+  expect(document.querySelector('[data-slot="comparisonNotice"]').textContent).toContain('missing rider');
+  expect(document.querySelector('[data-slot="overallTrend"]').querySelectorAll('path')).toHaveLength(2);
+});
+
 it('changes only race detail when a history race is selected', async () => {
   const motoRace = {
     ...archivedRace([AXEL_ENTRY]),

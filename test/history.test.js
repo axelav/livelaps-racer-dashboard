@@ -194,6 +194,25 @@ describe('history dashboard', () => {
     expect(rows[1].textContent).toContain('—');
   });
 
+  it('uses a legend and horizontal ledger scroll for four or five Comparison Riders', () => {
+    const comparisonHistories = ['Bea Brown', 'Cal Chen', 'Dan Diaz', 'Eli Evans'].map((name, slot) => ({
+      slot,
+      racerName: name,
+      races: [{ sourceRaceId: 'livelaps:79103', overallPosition: slot + 3, overallPercentile: 90 - slot }]
+    }));
+
+    renderHistory(container, {
+      history,
+      selectedSourceRaceId: 'livelaps:79103',
+      onSelectRace: vi.fn(),
+      comparisonHistories
+    });
+
+    expect(container.querySelector('.history-ledger-scroll')).not.toBeNull();
+    expect(container.querySelector('[data-slot="comparisonLegend"]').textContent).toContain('Bea Brown');
+    expect(container.querySelector('[data-slot="comparisonLegend"]').textContent).toContain('Eli Evans');
+  });
+
   it('selects a race when its ledger row is clicked, same as the picker', () => {
     const onSelectRace = vi.fn();
     renderHistory(container, {

@@ -91,6 +91,20 @@ function headToHeadLine(anchorName, comparison, races) {
   return `${comparison.racerName} leads ${anchorName} ${comparisonWins}-${anchorWins}`;
 }
 
+function renderComparisonLegend(container, comparisons) {
+  container.innerHTML = '';
+  if (comparisons.length < 4) return;
+  const list = document.createElement('div');
+  list.className = 'legend';
+  comparisons.forEach((comparison) => {
+    const item = document.createElement('span');
+    item.className = 'legend-item';
+    item.textContent = comparison.racerName;
+    list.appendChild(item);
+  });
+  container.appendChild(list);
+}
+
 function renderCandidateList(container, candidates, onAddComparisonRider) {
   container.innerHTML = '';
   candidates.forEach((candidate) => {
@@ -114,6 +128,7 @@ export function renderHistory(
     onSelectRace,
     comparisonCandidates = [],
     comparisonHistories = [],
+    comparisonNotices = [],
     onAddComparisonRider,
     onSearchComparisonRiders
   }
@@ -138,6 +153,7 @@ export function renderHistory(
         </div>
       </div>
       <div data-slot="historyData">
+        <p class="notice" data-slot="comparisonNotice" hidden></p>
         <div class="history-trends">
           <div class="card">
             <h3>Overall percentile</h3>
@@ -154,10 +170,13 @@ export function renderHistory(
         <section class="history-ledger">
           <h3>Results ledger</h3>
           <div data-slot="headToHead"></div>
-          <table class="data-table">
-            <thead><tr><th>Date</th><th>Race</th><th>Source</th><th>Overall</th><th>Class</th><th>Result</th></tr></thead>
-            <tbody data-slot="ledger"></tbody>
-          </table>
+          <div data-slot="comparisonLegend"></div>
+          <div class="history-ledger-scroll">
+            <table class="data-table">
+              <thead><tr><th>Date</th><th>Race</th><th>Source</th><th>Overall</th><th>Class</th><th>Result</th></tr></thead>
+              <tbody data-slot="ledger"></tbody>
+            </table>
+          </div>
         </section>
       </div>
     </section>
@@ -178,6 +197,10 @@ export function renderHistory(
     renderCandidateList(comparisonCandidateList, candidates, onAddComparisonRider);
   });
 
+  if (comparisonNotices.length > 0) {
+    slot('comparisonNotice').hidden = false;
+    slot('comparisonNotice').textContent = comparisonNotices.join(' ');
+  }
   if (races.length === 0) {
     slot('historyData').textContent = 'No archived events yet.';
     return;
@@ -254,6 +277,7 @@ export function renderHistory(
     headRow.appendChild(th);
   });
 
+  renderComparisonLegend(slot('comparisonLegend'), comparisons);
   const ledger = slot('ledger');
   races.forEach((race) => {
     const row = document.createElement('tr');

@@ -130,6 +130,9 @@ body {
 .history-ledger {
   margin-top: 20px;
 }
+.history-ledger-scroll {
+  overflow-x: auto;
+}
 .history-ledger tr.is-selected td {
   color: var(--text-primary);
   font-weight: 650;

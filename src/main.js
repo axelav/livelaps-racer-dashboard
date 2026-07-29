@@ -140,12 +140,30 @@ async function showDashboard(raceId, participantId, loadedRace, ingestInput, kno
         console.error(error);
       }
       const comparisonSet = comparisonSetFromParams(new URLSearchParams(window.location.search));
+      const comparisonNotices = [];
+      const anchorRoundIds = new Set((racerHistory.races ?? []).map((historyRace) => historyRace.sourceRaceId));
       const comparisonHistories = (
         await Promise.all(
           comparisonSet.map(async (normalizedComparisonName, slot) => {
             if (!normalizedComparisonName) return null;
-            const comparisonHistory = await archiveApi.history(normalizedComparisonName);
-            return { ...comparisonHistory, slot, normalizedName: normalizedComparisonName };
+            if (normalizedComparisonName === normalizedName) {
+              comparisonNotices.push(`${normalizedComparisonName} ignored because it is the Anchor Racer.`);
+              return null;
+            }
+            try {
+              const comparisonHistory = await archiveApi.history(normalizedComparisonName);
+              const hasSharedRound = (comparisonHistory.races ?? []).some((historyRace) =>
+                anchorRoundIds.has(historyRace.sourceRaceId)
+              );
+              if (!hasSharedRound) {
+                comparisonNotices.push(`${normalizedComparisonName} omitted because it has zero Shared Rounds.`);
+                return null;
+              }
+              return { ...comparisonHistory, slot, normalizedName: normalizedComparisonName };
+            } catch {
+              comparisonNotices.push(`${normalizedComparisonName} could not be found in the Race Archive.`);
+              return null;
+            }
           })
         )
       ).filter(Boolean);
@@ -154,6 +172,7 @@ async function showDashboard(raceId, participantId, loadedRace, ingestInput, kno
         selectedSourceRaceId: race.raceId,
         comparisonCandidates,
         comparisonHistories,
+        comparisonNotices,
         onAddComparisonRider: (comparisonRiderName) => {
           const params = new URLSearchParams(window.location.search);
           addComparisonRider(params, comparisonRiderName, normalizedName);
