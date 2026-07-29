@@ -6,7 +6,7 @@
   "packageManager": "pnpm@10.27.0",
   "scripts": {
     "dev": "vite",
-    "dev:api": "node server/index.js",
+    "dev:api": "ENDURO_DB_PATH=.data/enduro.db node server/index.js",
     "start": "node server/index.js",
     "backfill:mototally": "node scripts/backfill-mototally.js",
     "build": "vite build",

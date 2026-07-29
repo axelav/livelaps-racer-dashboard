@@ -366,6 +366,31 @@ describe('archive API', () => {
     });
   });
 
+  it('returns Shared Round Comparison Rider candidates', async () => {
+    const first = loadedRace({ sourceRaceId: 'first', eventDate: '2026-06-01' });
+    first.normalized.allResults = [
+      { ...first.normalized.allResults[0], fullName: 'Axel Anderson', id: 'anchor-1' },
+      { ...first.normalized.allResults[1], fullName: 'Bea Brown', id: 'bea-1' },
+      { ...first.normalized.allResults[1], fullName: 'Cal Chen', id: 'cal-1' }
+    ];
+    const second = loadedRace({ sourceRaceId: 'second', eventDate: '2026-06-08' });
+    second.normalized.allResults = [
+      { ...second.normalized.allResults[0], fullName: 'Axel Anderson', id: 'anchor-2' },
+      { ...second.normalized.allResults[1], fullName: 'Bea Brown', id: 'bea-2' }
+    ];
+    archive.saveSnapshot(first, '2026-07-18T11:00:00.000Z');
+    archive.saveSnapshot(second, '2026-07-18T12:00:00.000Z');
+
+    const response = await request(app).get(
+      `/api/history/${encodeURIComponent(normalizeRacerName('Axel Anderson'))}/comparison-candidates?q=bea`
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
+      riders: [{ normalizedName: 'bea brown', fullName: 'Bea Brown', sharedRoundCount: 2 }]
+    });
+  });
+
   it('makes an ingested race immediately available in that racer’s history', async () => {
     const created = await request(app).post('/api/archive/ingest').send({ input: '79103' });
     const history = await request(app).get(

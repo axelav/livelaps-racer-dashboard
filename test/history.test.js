@@ -67,6 +67,153 @@ describe('history dashboard', () => {
     expect(container.querySelectorAll('[data-slot="ledger"] button')).toHaveLength(1);
   });
 
+  it('uses the shared history series colors from CSS variables', () => {
+    container.style.setProperty('--series-overall', '#111111');
+    container.style.setProperty('--series-class', '#222222');
+
+    renderHistory(container, {
+      history,
+      selectedSourceRaceId: 'livelaps:79103',
+      onSelectRace: vi.fn()
+    });
+
+    const trendCards = container.querySelectorAll('.history-trends [data-slot$="Trend"]');
+    expect(trendCards[0].querySelector('path')?.getAttribute('stroke')).toBe('#111111');
+    expect(trendCards[1].querySelector('path')?.getAttribute('stroke')).toBe('#222222');
+  });
+
+  it('renders Comparison Rider overall-percentile series on Anchor Racer rounds', () => {
+    container.style.setProperty('--series-comparison-1', '#333333');
+
+    renderHistory(container, {
+      history,
+      selectedSourceRaceId: 'livelaps:79103',
+      onSelectRace: vi.fn(),
+      comparisonHistories: [
+        {
+          slot: 0,
+          racerName: 'Bea Brown',
+          races: [
+            {
+              sourceRaceId: 'livelaps:79103',
+              overallPercentile: 70,
+              classPercentile: 80
+            }
+          ]
+        }
+      ]
+    });
+
+    const overallTrend = container.querySelector('[data-slot="overallTrend"]');
+    expect(overallTrend.querySelectorAll('path')).toHaveLength(2);
+    expect(overallTrend.querySelectorAll('path')[1].getAttribute('stroke')).toBe('#333333');
+    expect(overallTrend.querySelectorAll('circle.pt')).toHaveLength(3);
+  });
+
+  it('omits other-class Comparison Riders from class-percentile comparison with a named note', () => {
+    renderHistory(container, {
+      history: {
+        ...history,
+        races: history.races.map((race) => ({ ...race, className: 'A 40+' }))
+      },
+      selectedSourceRaceId: 'livelaps:79103',
+      onSelectRace: vi.fn(),
+      comparisonHistories: [
+        {
+          slot: 0,
+          racerName: 'Bea Brown',
+          races: [
+            {
+              sourceRaceId: 'livelaps:79103',
+              className: 'A 40+',
+              overallPercentile: 70,
+              classPercentile: 80
+            }
+          ]
+        },
+        {
+          slot: 1,
+          racerName: 'Cal Chen',
+          races: [
+            {
+              sourceRaceId: 'livelaps:79103',
+              className: 'Pro',
+              overallPercentile: 95,
+              classPercentile: 100
+            }
+          ]
+        }
+      ]
+    });
+
+    expect(container.querySelector('[data-slot="overallTrend"]').querySelectorAll('path')).toHaveLength(3);
+    expect(container.querySelector('[data-slot="classTrend"]').querySelectorAll('path')).toHaveLength(2);
+    expect(container.textContent).toContain('Cal Chen omitted from class percentile because they are outside A 40+');
+  });
+
+  it('adds Head-to-Head Records and compact comparison ledger columns', () => {
+    renderHistory(container, {
+      history,
+      selectedSourceRaceId: 'livelaps:79103',
+      onSelectRace: vi.fn(),
+      comparisonHistories: [
+        {
+          slot: 0,
+          racerName: 'Bea Brown',
+          races: [
+            { sourceRaceId: 'livelaps:79103', overallPosition: 5, overallPercentile: 70 },
+            { sourceRaceId: 'mototally:ECEA/Enduro/2026/6/O1', overallPosition: 8, overallPercentile: 85 }
+          ]
+        },
+        {
+          slot: 1,
+          racerName: 'Cal Chen',
+          races: [{ sourceRaceId: 'livelaps:79103', overallPosition: 1, overallPercentile: 100 }]
+        }
+      ]
+    });
+
+    expect(container.textContent).toContain('Head-to-head');
+    expect(container.textContent).toContain('Áxel Anderson leads Bea Brown 1-1');
+    expect(container.textContent).toContain('Cal Chen leads Áxel Anderson 1-0');
+    const headings = Array.from(container.querySelectorAll('.history-ledger th')).map((th) => th.textContent);
+    expect(headings).toEqual([
+      'Date',
+      'Race',
+      'Source',
+      'Overall',
+      'Class',
+      'Result',
+      'Bea Brown',
+      'Cal Chen'
+    ]);
+    const rows = container.querySelectorAll('[data-slot="ledger"] tr');
+    expect(rows[0].textContent).toContain('5 (+3)');
+    expect(rows[0].textContent).toContain('1 (-1)');
+    expect(rows[1].textContent).toContain('8 (-2)');
+    expect(rows[1].textContent).toContain('—');
+  });
+
+  it('uses a legend and horizontal ledger scroll for four or five Comparison Riders', () => {
+    const comparisonHistories = ['Bea Brown', 'Cal Chen', 'Dan Diaz', 'Eli Evans'].map((name, slot) => ({
+      slot,
+      racerName: name,
+      races: [{ sourceRaceId: 'livelaps:79103', overallPosition: slot + 3, overallPercentile: 90 - slot }]
+    }));
+
+    renderHistory(container, {
+      history,
+      selectedSourceRaceId: 'livelaps:79103',
+      onSelectRace: vi.fn(),
+      comparisonHistories
+    });
+
+    expect(container.querySelector('.history-ledger-scroll')).not.toBeNull();
+    expect(container.querySelector('[data-slot="comparisonLegend"]').textContent).toContain('Bea Brown');
+    expect(container.querySelector('[data-slot="comparisonLegend"]').textContent).toContain('Eli Evans');
+    expect(container.querySelector('[data-slot="comparisonLegend"] .legend-key')).not.toBeNull();
+  });
+
   it('selects a race when its ledger row is clicked, same as the picker', () => {
     const onSelectRace = vi.fn();
     renderHistory(container, {
@@ -78,6 +225,37 @@ describe('history dashboard', () => {
     const rows = container.querySelectorAll('[data-slot="ledger"] tr');
     rows[1].querySelector('button').click();
     expect(onSelectRace).toHaveBeenCalledWith('mototally:ECEA/Enduro/2026/6/O1');
+  });
+
+  it('opens a Comparison Rider picker with Shared Round suggestions and search', async () => {
+    const onAddComparisonRider = vi.fn();
+    const onSearchComparisonRiders = vi.fn(async () => [
+      { normalizedName: 'cal chen', fullName: 'Cal Chen', sharedRoundCount: 1 }
+    ]);
+    renderHistory(container, {
+      history,
+      selectedSourceRaceId: 'livelaps:79103',
+      onSelectRace: vi.fn(),
+      comparisonCandidates: [
+        { normalizedName: 'bea brown', fullName: 'Bea Brown', sharedRoundCount: 2 }
+      ],
+      onAddComparisonRider,
+      onSearchComparisonRiders
+    });
+
+    container.querySelector('[data-slot="comparisonToggle"]').click();
+    expect(container.textContent).toContain('Bea Brown');
+    expect(container.textContent).toContain('2 shared rounds');
+
+    container.querySelector('[data-candidate="bea brown"]').click();
+    expect(onAddComparisonRider).toHaveBeenCalledWith('bea brown');
+
+    const input = container.querySelector('[data-slot="comparisonSearch"]');
+    input.value = 'cal';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+
+    await vi.waitFor(() => expect(onSearchComparisonRiders).toHaveBeenCalledWith('cal'));
+    await vi.waitFor(() => expect(container.textContent).toContain('Cal Chen'));
   });
 
   it('shows a safe empty state without rendering invalid trend charts', () => {

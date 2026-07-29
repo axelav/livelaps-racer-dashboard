@@ -147,6 +147,14 @@ export function createApp({
     res.json({ racers: archive.findRacers(String(req.query.q ?? '')) });
   });
 
+  app.get('/api/history/:normalizedName/comparison-candidates', (req, res) => {
+    const riders = archive.findComparisonCandidates(
+      normalizeRacerName(req.params.normalizedName),
+      String(req.query.q ?? '')
+    );
+    res.json({ riders });
+  });
+
   app.get('/api/history/:normalizedName', (req, res) => {
     const entries = archive.findHistory(normalizeRacerName(req.params.normalizedName));
     res.json(buildRacerHistory(entries));

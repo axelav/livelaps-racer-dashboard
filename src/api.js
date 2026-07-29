@@ -41,5 +41,9 @@ export const archiveApi = {
   ingest: (input) => post('/api/archive/ingest', { input }),
   refresh: (id) => post(`/api/source-races/${encodeURIComponent(id)}/refresh`),
   sourceRace: (id) => get(`/api/source-races/${encodeURIComponent(id)}`),
-  history: (normalizedName) => get(`/api/history/${encodeURIComponent(normalizedName)}`)
+  history: (normalizedName) => get(`/api/history/${encodeURIComponent(normalizedName)}`),
+  comparisonCandidates: (normalizedName, query = '') =>
+    get(
+      `/api/history/${encodeURIComponent(normalizedName)}/comparison-candidates?q=${encodeURIComponent(query)}`
+    )
 };

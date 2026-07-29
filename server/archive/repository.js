@@ -232,6 +232,43 @@ export function createArchive(db) {
         }));
     },
 
+    findComparisonCandidates(anchorNormalizedName, query = '', limit = 20) {
+      const normalizedQuery = normalizeRacerName(query);
+      return db
+        .prepare(`
+          WITH anchor_races AS (
+            SELECT DISTINCT rs.id AS snapshot_id
+            FROM race_entries anchor
+            JOIN race_snapshots rs ON rs.id = anchor.snapshot_id
+            JOIN source_races sr
+              ON sr.id = rs.source_race_id
+             AND sr.current_snapshot_id = rs.id
+            WHERE anchor.normalized_name = ?
+          )
+          SELECT re.normalized_name, MIN(re.full_name) AS full_name,
+                 COUNT(DISTINCT re.snapshot_id) AS shared_round_count
+          FROM race_entries re
+          JOIN anchor_races ar ON ar.snapshot_id = re.snapshot_id
+          WHERE re.normalized_name <> ?
+            AND (? = '' OR re.normalized_name LIKE ?)
+          GROUP BY re.normalized_name
+          ORDER BY shared_round_count DESC, re.normalized_name
+          LIMIT ?
+        `)
+        .all(
+          anchorNormalizedName,
+          anchorNormalizedName,
+          normalizedQuery,
+          `%${normalizedQuery}%`,
+          limit
+        )
+        .map((row) => ({
+          normalizedName: row.normalized_name,
+          fullName: row.full_name,
+          sharedRoundCount: row.shared_round_count
+        }));
+    },
+
     findHistory(normalizedName) {
       return db
         .prepare(`

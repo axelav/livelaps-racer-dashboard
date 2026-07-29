@@ -68,10 +68,36 @@ _Avoid_: Raw placement, finish time
 The chronological list of exact per-race placements and times accompanying History Dashboard trends.
 _Avoid_: Trend chart, combined leaderboard
 
-**Saved selection**:
-The browser-local record of a visitor's racer-history name, which can be cleared by that visitor.
-_Avoid_: Shared profile, user account
-
 **Race entry**:
 One racer's result within a Race Snapshot.
 _Avoid_: Racer, profile
+
+**Anchor racer**:
+The racer a view is built around. Every stat, placement, and comparison on
+that view is stated from this racer's point of view, and adding others never
+displaces them.
+_Avoid_: Selected racer, primary rider
+
+**Comparison rider**:
+Another racer shown alongside the Anchor Racer for contrast. A Comparison
+Rider is chosen by name and may come from any class; class is a label on the
+comparison, never a filter on who may be chosen.
+_Avoid_: Competitor, opponent, rival
+
+**Comparison set**:
+The Comparison Riders a visitor has chosen to show against the Anchor Racer.
+It belongs to the address of the view, so it can be shared and revisited, and
+is never a stored relationship between the racers themselves.
+_Avoid_: Watchlist, rivals, followed racers
+
+**Shared round**:
+A race both the Anchor Racer and a Comparison Rider have a Race Entry in.
+Only Shared Rounds support comparing placements directly; a round only one of
+them rode is an absence, not a poor result.
+_Avoid_: Common race, overlap
+
+**Head-to-head record**:
+How often the Anchor Racer finished ahead of a Comparison Rider across their
+Shared Rounds. It counts rounds, never margins, and says nothing about rounds
+only one of them entered.
+_Avoid_: Season standings, championship points

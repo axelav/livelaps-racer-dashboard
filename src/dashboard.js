@@ -1,4 +1,5 @@
 import { lineChart, barChart } from './charts.js';
+import { historySeriesColors } from './seriesColors.js';
 import { deriveSectionSeries, formatDuration, parseDuration } from './livelaps.js';
 
 const TEMPLATE = `
@@ -178,12 +179,12 @@ export function renderDashboard(
   slot('statClassSub').textContent = racer.className;
 
   const root = container.querySelector('.viz-root');
-  const styles = getComputedStyle(root);
-  const colorOverall = styles.getPropertyValue('--series-overall').trim();
-  const colorClass = styles.getPropertyValue('--series-class').trim();
-  const colorSection = styles.getPropertyValue('--series-section').trim();
-  const colorSpeed = styles.getPropertyValue('--series-speed').trim();
-  const colorGap = styles.getPropertyValue('--series-gap').trim();
+  const colors = historySeriesColors(root);
+  const colorOverall = colors.overall;
+  const colorClass = colors.class;
+  const colorSection = colors.section;
+  const colorSpeed = colors.speed;
+  const colorGap = colors.gap;
 
   if (racer.scoring === 'points') {
     renderPointsBreakdown(slot, subhead, racer, fieldSize, classSize, {

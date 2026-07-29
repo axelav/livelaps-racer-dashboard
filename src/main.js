@@ -3,6 +3,7 @@ import { archiveApi, archivedRaceFromResponse } from './api.js';
 import { renderSearch } from './search.js';
 import { renderDashboard } from './dashboard.js';
 import { normalizeRacerName, renderHistory } from './history.js';
+import { addComparisonRider, comparisonSetFromParams, writeComparisonSet } from './comparisonSet.js';
 
 const app = document.getElementById('app');
 let requestId = 0;
@@ -23,6 +24,14 @@ function currentParams() {
     participantId: params.get('id'),
     ingestInput: legacyRaceId
   };
+}
+
+function dashboardUrl(raceId, participantId, comparisonSet = comparisonSetFromParams(new URLSearchParams(window.location.search))) {
+  const params = new URLSearchParams();
+  params.set('race', raceId);
+  params.set('id', participantId);
+  writeComparisonSet(params, comparisonSet);
+  return `?${params.toString()}`;
 }
 
 async function loadArchivedRace(raceId, ingestInput) {
@@ -47,11 +56,7 @@ function showSearch(options = {}) {
     api: archiveApi,
     onSelect(raceId, participantId, race) {
       activeRace = race;
-      history.pushState(
-        {},
-        '',
-        `?race=${encodeURIComponent(raceId)}&id=${encodeURIComponent(participantId)}`
-      );
+      history.pushState({}, '', dashboardUrl(raceId, participantId, []));
       showDashboard(raceId, participantId, race);
     },
     async onSelectRacer(normalizedName) {
@@ -66,11 +71,7 @@ function showSearch(options = {}) {
           (entry) => normalizeRacerName(entry.fullName) === normalizedName
         );
         if (!racer) throw new Error("Couldn't find that rider in their latest archived race.");
-        history.pushState(
-          {},
-          '',
-          `?race=${encodeURIComponent(race.raceId)}&id=${encodeURIComponent(racer.id)}`
-        );
+        history.pushState({}, '', dashboardUrl(race.raceId, racer.id, []));
         await showDashboard(race.raceId, racer.id, race, undefined, racerHistory);
       } catch (error) {
         if (thisRequest !== requestId) return;
@@ -98,11 +99,7 @@ async function showDashboard(raceId, participantId, loadedRace, ingestInput, kno
         : await loadArchivedRace(raceId, ingestInput);
     if (thisRequest !== requestId) return;
     activeRace = race;
-    history.replaceState(
-      {},
-      '',
-      `?race=${encodeURIComponent(race.raceId)}&id=${encodeURIComponent(participantId)}`
-    );
+    history.replaceState({}, '', dashboardUrl(race.raceId, participantId));
     const totals = deriveTotals(race.allResults, participantId);
     if (!totals) {
       history.replaceState({}, '', window.location.pathname);
@@ -135,10 +132,65 @@ async function showDashboard(raceId, participantId, loadedRace, ingestInput, kno
       }
     });
 
-    const renderRacerHistory = (racerHistory) => {
+    const renderRacerHistory = async (racerHistory) => {
+      let comparisonCandidates = [];
+      try {
+        comparisonCandidates = (await archiveApi.comparisonCandidates(normalizedName)).riders ?? [];
+      } catch (error) {
+        console.error(error);
+      }
+      const comparisonSet = comparisonSetFromParams(new URLSearchParams(window.location.search));
+      const comparisonNotices = [];
+      const anchorRoundIds = new Set((racerHistory.races ?? []).map((historyRace) => historyRace.sourceRaceId));
+      const seenComparisonNames = new Set();
+      const comparisonHistories = (
+        await Promise.all(
+          comparisonSet.map(async (normalizedComparisonName, slot) => {
+            if (!normalizedComparisonName) return null;
+            if (normalizedComparisonName === normalizedName) {
+              comparisonNotices.push(`${normalizedComparisonName} ignored because it is the Anchor Racer.`);
+              return null;
+            }
+            if (seenComparisonNames.has(normalizedComparisonName)) {
+              comparisonNotices.push(`${normalizedComparisonName} ignored because it is already in the Comparison Set.`);
+              return null;
+            }
+            seenComparisonNames.add(normalizedComparisonName);
+            try {
+              const comparisonHistory = await archiveApi.history(normalizedComparisonName);
+              const hasSharedRound = (comparisonHistory.races ?? []).some((historyRace) =>
+                anchorRoundIds.has(historyRace.sourceRaceId)
+              );
+              if (!hasSharedRound) {
+                comparisonNotices.push(`${normalizedComparisonName} omitted because it has zero Shared Rounds.`);
+                return null;
+              }
+              return { ...comparisonHistory, slot, normalizedName: normalizedComparisonName };
+            } catch {
+              comparisonNotices.push(`${normalizedComparisonName} could not be found in the Race Archive.`);
+              return null;
+            }
+          })
+        )
+      ).filter(Boolean);
       renderHistory(historyPanel, {
         history: racerHistory,
         selectedSourceRaceId: race.raceId,
+        comparisonCandidates,
+        comparisonHistories,
+        comparisonNotices,
+        onAddComparisonRider: (comparisonRiderName) => {
+          const params = new URLSearchParams(window.location.search);
+          addComparisonRider(params, comparisonRiderName, normalizedName);
+          history.pushState(
+            {},
+            '',
+            dashboardUrl(race.raceId, participantId, comparisonSetFromParams(params))
+          );
+          renderRacerHistory(racerHistory);
+        },
+        onSearchComparisonRiders: async (query) =>
+          (await archiveApi.comparisonCandidates(normalizedName, query)).riders ?? [],
         onSelectRace: async (selectedRaceId) => {
           if (selectedRaceId === race.raceId) return;
           const pickerRequest = ++requestId;
@@ -165,8 +217,8 @@ async function showDashboard(raceId, participantId, loadedRace, ingestInput, kno
       historyPanel.textContent = 'Loading history…';
       archiveApi
         .history(normalizedName)
-        .then((racerHistory) => {
-          if (thisRequest === requestId) renderRacerHistory(racerHistory);
+        .then(async (racerHistory) => {
+          if (thisRequest === requestId) await renderRacerHistory(racerHistory);
         })
         .catch((error) => {
           if (thisRequest !== requestId) return;

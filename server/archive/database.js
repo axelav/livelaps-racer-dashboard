@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync } from 'node:fs';
+import { mkdirSync, readFileSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import Database from 'better-sqlite3';
@@ -28,6 +28,7 @@ function runMigrations(db) {
 }
 
 export function openDatabase(filename) {
+  if (filename !== ':memory:') mkdirSync(dirname(filename), { recursive: true });
   const db = new Database(filename);
   db.pragma('foreign_keys = ON');
   if (filename !== ':memory:') db.pragma('journal_mode = WAL');

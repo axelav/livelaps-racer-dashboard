@@ -24,6 +24,7 @@ export function buildRacerHistory(entries) {
     fieldSize: entry.fieldSize,
     overallPercentile: toPercentile(entry.overallPosition, entry.fieldSize),
     classPosition: entry.classPosition,
+    className: entry.className,
     classSize: entry.classSize,
     classPercentile: toPercentile(entry.classPosition, entry.classSize),
     totalTimeSeconds: entry.totalTimeSeconds,

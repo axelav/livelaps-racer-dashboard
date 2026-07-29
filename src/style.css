@@ -26,6 +26,11 @@ body {
   --series-section: #4a3aa7;
   --series-speed: #eda100;
   --series-gap: #eb6834;
+  --series-comparison-1: var(--series-overall);
+  --series-comparison-2: var(--series-class);
+  --series-comparison-3: var(--series-section);
+  --series-comparison-4: var(--series-speed);
+  --series-comparison-5: var(--series-gap);
   --good: #006300;
   --error: #b3261e;
   background: var(--page);
@@ -47,6 +52,11 @@ body {
     --series-section: #9085e9;
     --series-speed: #c98500;
     --series-gap: #d95926;
+    --series-comparison-1: var(--series-overall);
+    --series-comparison-2: var(--series-class);
+    --series-comparison-3: var(--series-section);
+    --series-comparison-4: var(--series-speed);
+    --series-comparison-5: var(--series-gap);
     --good: #0ca30c;
     --error: #ff6b60;
   }
@@ -119,6 +129,9 @@ body {
 }
 .history-ledger {
   margin-top: 20px;
+}
+.history-ledger-scroll {
+  overflow-x: auto;
 }
 .history-ledger tr.is-selected td {
   color: var(--text-primary);
