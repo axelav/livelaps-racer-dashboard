@@ -657,6 +657,43 @@ table.data-table th {
     font-size: 11.5px;
     font-weight: 600;
   }
+  .section-data-table,
+  .section-data-table tbody,
+  .section-data-table tr,
+  .section-data-table td {
+    display: block;
+    width: 100%;
+  }
+  .section-data-table thead {
+    display: none;
+  }
+  .section-data-table tr {
+    border-bottom: 1px solid var(--grid);
+    padding: 12px 0;
+  }
+  .section-data-table td {
+    border-bottom: 0;
+    display: grid;
+    gap: 12px;
+    grid-template-columns: 96px minmax(0, 1fr);
+    padding: 4px 0;
+    text-align: left;
+  }
+  .section-data-table td::before {
+    color: var(--text-muted);
+    content: attr(data-label);
+    font-size: 11.5px;
+    font-weight: 600;
+  }
+  .section-data-table .section-row-title {
+    display: block;
+    font-size: 15px;
+    font-weight: 650;
+    padding: 0 0 8px;
+  }
+  .section-data-table .section-row-title::before {
+    content: none;
+  }
   .history-trends {
     grid-template-columns: 1fr;
   }

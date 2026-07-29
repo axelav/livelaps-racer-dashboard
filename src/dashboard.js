@@ -78,7 +78,7 @@ const TEMPLATE = `
 
       <section class="table-section">
         <h2 class="table-heading">Section-by-section data</h2>
-        <table class="data-table" data-slot="table">
+        <table class="data-table section-data-table" data-slot="table">
           <thead data-slot="tableHead">
             <tr>
               <th>Section</th>
@@ -274,6 +274,7 @@ export function renderDashboard(
     format: (v) => `${v.toFixed(1)}s`
   });
 
+  const labels = ['Section', 'Cum time', 'Overall pos', 'Class pos', 'Section overall', 'Section class', 'Avg mph', 'Gap ahead'];
   const tbody = slot('tableBody');
   series.names.forEach((name, i) => {
     const tr = document.createElement('tr');
@@ -286,8 +287,10 @@ export function renderDashboard(
       series.sectionOnlyClassRanks[i],
       Number.isFinite(series.avgSpeeds[i]) ? series.avgSpeeds[i].toFixed(3) : '—',
       series.gapAheadSeconds[i].toFixed(3)
-    ].forEach((val) => {
+    ].forEach((val, index) => {
       const td = document.createElement('td');
+      td.dataset.label = labels[index];
+      if (index === 0) td.className = 'section-row-title';
       td.textContent = val;
       tr.appendChild(td);
     });
@@ -379,19 +382,20 @@ function renderPointsBreakdown(slot, subhead, racer, fieldSize, classSize, color
     format: (v) => String(v)
   });
 
+  const headings = [
+    ['Check', 'Check'],
+    ['Points', 'Pts'],
+    ['Cumulative points', 'Cum'],
+    ['Emergency time', 'Emerg'],
+    ['Check rank (overall)', 'Chk overall'],
+    ['Check rank (class)', 'Chk class'],
+    ['Overall position', 'Pos overall'],
+    ['Class position', 'Pos class']
+  ];
   const thead = slot('tableHead');
   thead.innerHTML = '';
   const headRow = document.createElement('tr');
-  [
-    'Check',
-    'Points',
-    'Cumulative points',
-    'Emergency time',
-    'Check rank (overall)',
-    'Check rank (class)',
-    'Overall position',
-    'Class position'
-  ].forEach((label) => {
+  headings.forEach(([label]) => {
     const th = document.createElement('th');
     th.textContent = label;
     headRow.appendChild(th);
@@ -410,8 +414,10 @@ function renderPointsBreakdown(slot, subhead, racer, fieldSize, classSize, color
       s.sectionClassPosition ?? '—',
       s.overallPosition,
       s.classPosition
-    ].forEach((val) => {
+    ].forEach((val, index) => {
       const td = document.createElement('td');
+      td.dataset.label = headings[index][1];
+      if (index === 0) td.className = 'section-row-title';
       td.textContent = String(val);
       tr.appendChild(td);
     });

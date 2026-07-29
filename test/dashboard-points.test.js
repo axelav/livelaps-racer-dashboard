@@ -90,6 +90,25 @@ describe('renderDashboard for a points-scored racer', () => {
     expect(check1).toEqual(['Check 1', '0', '0', '—', '1', '1', '1', '1']);
   });
 
+  it('labels section table cells for the mobile card layout', () => {
+    const c = render(3279244);
+    const table = c.querySelector('table.data-table');
+    expect(table.classList.contains('section-data-table')).toBe(true);
+
+    const cells = Array.from(table.querySelector('tbody tr').querySelectorAll('td'));
+    expect(cells.map((td) => td.dataset.label)).toEqual([
+      'Check',
+      'Pts',
+      'Cum',
+      'Emerg',
+      'Chk overall',
+      'Chk class',
+      'Pos overall',
+      'Pos class'
+    ]);
+    expect(cells[0].classList.contains('section-row-title')).toBe(true);
+  });
+
   it('renders position charts for every check and a timed-only comparison chart', () => {
     const c = render(3279244);
     expect(c.querySelector('[data-slot="chartOverall"] svg')).not.toBeNull();
