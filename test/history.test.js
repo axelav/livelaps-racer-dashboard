@@ -151,6 +151,49 @@ describe('history dashboard', () => {
     expect(container.textContent).toContain('Cal Chen omitted from class percentile because they are outside A 40+');
   });
 
+  it('adds Head-to-Head Records and compact comparison ledger columns', () => {
+    renderHistory(container, {
+      history,
+      selectedSourceRaceId: 'livelaps:79103',
+      onSelectRace: vi.fn(),
+      comparisonHistories: [
+        {
+          slot: 0,
+          racerName: 'Bea Brown',
+          races: [
+            { sourceRaceId: 'livelaps:79103', overallPosition: 5, overallPercentile: 70 },
+            { sourceRaceId: 'mototally:ECEA/Enduro/2026/6/O1', overallPosition: 8, overallPercentile: 85 }
+          ]
+        },
+        {
+          slot: 1,
+          racerName: 'Cal Chen',
+          races: [{ sourceRaceId: 'livelaps:79103', overallPosition: 1, overallPercentile: 100 }]
+        }
+      ]
+    });
+
+    expect(container.textContent).toContain('Head-to-head');
+    expect(container.textContent).toContain('Áxel Anderson leads Bea Brown 1-1');
+    expect(container.textContent).toContain('Cal Chen leads Áxel Anderson 1-0');
+    const headings = Array.from(container.querySelectorAll('.history-ledger th')).map((th) => th.textContent);
+    expect(headings).toEqual([
+      'Date',
+      'Race',
+      'Source',
+      'Overall',
+      'Class',
+      'Result',
+      'Bea Brown',
+      'Cal Chen'
+    ]);
+    const rows = container.querySelectorAll('[data-slot="ledger"] tr');
+    expect(rows[0].textContent).toContain('5 (+3)');
+    expect(rows[0].textContent).toContain('1 (-1)');
+    expect(rows[1].textContent).toContain('8 (-2)');
+    expect(rows[1].textContent).toContain('—');
+  });
+
   it('selects a race when its ledger row is clicked, same as the picker', () => {
     const onSelectRace = vi.fn();
     renderHistory(container, {

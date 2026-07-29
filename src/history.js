@@ -62,6 +62,35 @@ function classComparisonTrendSeries(races, comparisonHistories, colors) {
   return { omitted, series };
 }
 
+function comparisonRaceMaps(comparisonHistories) {
+  return comparisonHistories.map((comparison) => ({
+    ...comparison,
+    raceById: new Map((comparison.races ?? []).map((race) => [race.sourceRaceId, race]))
+  }));
+}
+
+function signedDelta(delta) {
+  if (!Number.isFinite(delta)) return '—';
+  return delta > 0 ? `+${delta}` : String(delta);
+}
+
+function headToHeadLine(anchorName, comparison, races) {
+  let anchorWins = 0;
+  let comparisonWins = 0;
+  races.forEach((race) => {
+    const comparisonRace = comparison.raceById.get(race.sourceRaceId);
+    if (!Number.isFinite(race.overallPosition) || !Number.isFinite(comparisonRace?.overallPosition)) {
+      return;
+    }
+    if (race.overallPosition < comparisonRace.overallPosition) anchorWins += 1;
+    else if (comparisonRace.overallPosition < race.overallPosition) comparisonWins += 1;
+  });
+  if (anchorWins >= comparisonWins) {
+    return `${anchorName} leads ${comparison.racerName} ${anchorWins}-${comparisonWins}`;
+  }
+  return `${comparison.racerName} leads ${anchorName} ${comparisonWins}-${anchorWins}`;
+}
+
 function renderCandidateList(container, candidates, onAddComparisonRider) {
   container.innerHTML = '';
   candidates.forEach((candidate) => {
@@ -124,6 +153,7 @@ export function renderHistory(
         </div>
         <section class="history-ledger">
           <h3>Results ledger</h3>
+          <div data-slot="headToHead"></div>
           <table class="data-table">
             <thead><tr><th>Date</th><th>Race</th><th>Source</th><th>Overall</th><th>Class</th><th>Result</th></tr></thead>
             <tbody data-slot="ledger"></tbody>
@@ -203,6 +233,27 @@ export function renderHistory(
     ]
   });
 
+  const comparisons = comparisonRaceMaps(comparisonHistories);
+  if (comparisons.length > 0) {
+    const headToHead = slot('headToHead');
+    const title = document.createElement('h4');
+    title.textContent = 'Head-to-head';
+    headToHead.appendChild(title);
+    const list = document.createElement('ul');
+    comparisons.forEach((comparison) => {
+      const item = document.createElement('li');
+      item.textContent = headToHeadLine(history.racerName ?? 'Anchor Racer', comparison, races);
+      list.appendChild(item);
+    });
+    headToHead.appendChild(list);
+  }
+  const headRow = container.querySelector('.history-ledger thead tr');
+  comparisons.forEach((comparison) => {
+    const th = document.createElement('th');
+    th.textContent = comparison.racerName;
+    headRow.appendChild(th);
+  });
+
   const ledger = slot('ledger');
   races.forEach((race) => {
     const row = document.createElement('tr');
@@ -214,7 +265,14 @@ export function renderHistory(
       sourceLabel(race.provider),
       `${race.overallPosition ?? '—'} / ${race.fieldSize ?? '—'}`,
       `${race.classPosition ?? '—'} / ${race.classSize ?? '—'}`,
-      race.totalPoints != null ? `${race.totalPoints} pts` : formatDuration(race.totalTimeSeconds)
+      race.totalPoints != null ? `${race.totalPoints} pts` : formatDuration(race.totalTimeSeconds),
+      ...comparisons.map((comparison) => {
+        const comparisonRace = comparison.raceById.get(race.sourceRaceId);
+        if (!comparisonRace) return '—';
+        return `${comparisonRace.overallPosition ?? '—'} (${signedDelta(
+          comparisonRace.overallPosition - race.overallPosition
+        )})`;
+      })
     ].forEach((value) => {
       const cell = document.createElement('td');
       if (value === race) {
