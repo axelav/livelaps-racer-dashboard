@@ -1,4 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 import { openDatabase } from '../../server/archive/database.js';
 import {
   buildRacerHistory,
@@ -99,6 +102,16 @@ describe('archive repository', () => {
         'race_sections'
       ])
     );
+  });
+
+  it('creates parent directories for a local database path', () => {
+    const root = mkdtempSync(join(tmpdir(), 'enduro-db-'));
+    const filename = join(root, 'nested', 'enduro.db');
+    const localDb = openDatabase(filename);
+    localDb.close();
+
+    expect(() => openDatabase(filename).close()).not.toThrow();
+    rmSync(root, { recursive: true, force: true });
   });
 
   it('keeps immutable snapshots and selects the newest save as current', async () => {
