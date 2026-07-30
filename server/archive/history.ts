@@ -1,0 +1,80 @@
+import type { HistoryEntry, RacerHistory, ResultStatus } from '../../src/domain.js';
+
+export function normalizeRacerName(name: string): string {
+  return name
+    .normalize('NFKD')
+    .replace(/\p{Diacritic}/gu, '')
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .trim()
+    .toLocaleLowerCase();
+}
+
+export const toPercentile = (position: number | null, size: number | null): number | null => {
+  if (position == null || size == null || !Number.isFinite(position) || !Number.isFinite(size) || size <= 0) {
+    return null;
+  }
+  const percentile = Math.round((1 - (position - 1) / size) * 100);
+  return Math.max(0, Math.min(100, percentile));
+};
+
+type EntryStatus = {
+  status: ResultStatus;
+  note: string | null;
+};
+
+function resultStatusFor(entry: HistoryEntry): EntryStatus {
+  if (entry.provider !== 'mototally') return { status: 'finished', note: null };
+
+  const source: Partial<HistoryEntry['entry']> = entry.entry ?? {};
+  if (source.scoring === 'points') {
+    if (source.totalPoints == null) return { status: 'no_result', note: 'No final result' };
+    const { maxChk, checkCount } = source;
+    if (
+      typeof maxChk === 'number' &&
+      typeof checkCount === 'number' &&
+      Number.isFinite(maxChk) &&
+      Number.isFinite(checkCount) &&
+      maxChk < checkCount
+    ) {
+      return { status: 'official_dnf', note: `DNF after ${maxChk} of ${checkCount} checks` };
+    }
+    return { status: 'finished', note: null };
+  }
+
+  if (entry.totalTimeSeconds == null) return { status: 'no_result', note: 'No final result' };
+  return { status: 'finished', note: null };
+}
+
+export function buildRacerHistory(entries: HistoryEntry[]): RacerHistory {
+  const races = entries.map((entry) => {
+    const resultStatus = resultStatusFor(entry);
+    const hasPercentile = resultStatus.status !== 'no_result';
+    return {
+      sourceRaceId: entry.sourceRaceId,
+      raceName: entry.raceName,
+      eventDate: entry.eventDate,
+      eventDateProvenance: entry.eventDateProvenance,
+      provider: entry.provider,
+      fullName: entry.fullName,
+      overallPosition: entry.overallPosition,
+      fieldSize: entry.fieldSize,
+      overallPercentile: hasPercentile ? toPercentile(entry.overallPosition, entry.fieldSize) : null,
+      classPosition: entry.classPosition,
+      classSize: entry.classSize,
+      classPercentile: hasPercentile ? toPercentile(entry.classPosition, entry.classSize) : null,
+      totalTimeSeconds: entry.totalTimeSeconds,
+      totalPoints: entry.entry?.totalPoints ?? null,
+      resultStatus: resultStatus.status,
+      resultNote: resultStatus.note
+    };
+  });
+
+  return {
+    racerName: entries[0]?.fullName ?? null,
+    races,
+    trends: {
+      overallPercentiles: races.map(({ overallPercentile }) => overallPercentile),
+      classPercentiles: races.map(({ classPercentile }) => classPercentile)
+    }
+  };
+}
