@@ -63,7 +63,7 @@ export async function loadLiveLaps(source, { fetchImpl }) {
       modeName: raceMeta.modeName,
       eventDate: eventDate(race),
       location: null,
-      organizer: null
+      organizer: race.Promoter_Name ?? null
     },
     normalized: { raceMeta, allResults: results.allResults },
     artifact: {

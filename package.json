@@ -9,6 +9,7 @@
     "dev:api": "node server/index.js",
     "start": "node server/index.js",
     "backfill:mototally": "node scripts/backfill-mototally.js",
+    "backfill:livelaps": "node scripts/backfill-livelaps.js",
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest run"

@@ -16,7 +16,8 @@ const LIVE_LAPS_RACE = {
   message: {
     Race_Name: 'Summer Enduro',
     RACE_MODE_NAME: 'Enduro',
-    Event_Date: '2026-07-12'
+    Event_Date: '2026-07-12',
+    Promoter_Name: 'American National Enduro (ANEC)'
   }
 };
 
@@ -70,7 +71,7 @@ describe('server timing sources', () => {
       modeName: 'Enduro',
       eventDate: '2026-07-12',
       location: null,
-      organizer: null
+      organizer: 'American National Enduro (ANEC)'
     });
     expect(loaded.normalized).toEqual({
       raceMeta: { raceName: 'Summer Enduro', modeName: 'Enduro' },
