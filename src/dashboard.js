@@ -116,6 +116,10 @@ function buildLegend(container, items) {
   container.appendChild(wrap);
 }
 
+function durationOrDash(value) {
+  return value ? formatDuration(parseDuration(value)) : '—';
+}
+
 export function renderDashboard(
   container,
   { raceMeta, racer, fieldSize, classSize, capturedAt, onRefresh }
@@ -200,14 +204,18 @@ export function renderDashboard(
 
   const series = deriveSectionSeries(racer);
   const sectionCount = series.names.length;
+  const completedSections = series.cumTimes.filter((time) => time != null).length;
+  const finalTime = series.cumTimes.at(-1);
+  const finishSummary =
+    finalTime == null
+      ? `DNF after ${completedSections} of ${sectionCount} timed sections`
+      : `finished in ${finalTime} across ${sectionCount} timed sections`;
   subhead.appendChild(
-    document.createTextNode(
-      ` · Class ${racer.className} · finished in ${series.cumTimes[sectionCount - 1]} across ${sectionCount} timed sections`
-    )
+    document.createTextNode(` · Class ${racer.className} · ${finishSummary}`)
   );
 
-  slot('statGapLeader').textContent = formatDuration(parseDuration(racer.overallBehindByLeader));
-  slot('statGapLeaderSub').textContent = `behind class leader by ${formatDuration(parseDuration(racer.classBehindByLeader))}`;
+  slot('statGapLeader').textContent = durationOrDash(racer.overallBehindByLeader);
+  slot('statGapLeaderSub').textContent = `behind class leader by ${durationOrDash(racer.classBehindByLeader)}`;
 
   if (racer.avgSpeedTotal != null) {
     const statSpeed = slot('statSpeed');

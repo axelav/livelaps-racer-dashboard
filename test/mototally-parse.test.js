@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { MOTOTALLY_FIXTURE_HTML, docFromHtml } from './fixtures/mototally.fixture.js';
-import { parseResults, parseRaceName, parseAmaSet, parseOverallOptions, pickContainingGroup } from '../src/mototally.js';
+import { parseResults, parseRaceName, parseAmaSet, parseOverallOptions, pickContainingGroup, deriveStandings } from '../src/mototally.js';
 
 let doc;
 beforeAll(async () => { doc = await docFromHtml(MOTOTALLY_FIXTURE_HTML); });
@@ -36,6 +36,49 @@ describe('parseResults', () => {
     ]);
     expect(rows[1].sectionTimes.map((s) => s.seconds)).toEqual([60, 300]);
     expect(rows.map((r) => r.brand)).toEqual(['BET', 'KTM', 'GAS']);
+  });
+});
+
+describe('deriveStandings for timed races', () => {
+  it('ranks DNFs behind timed finishers within the class', () => {
+    const standings = deriveStandings([
+      {
+        id: 1,
+        fullName: 'FINISHER A',
+        displayedNumber: '1A',
+        brand: 'KTM',
+        className: 'A',
+        overallPosition: 1,
+        totalTimeSeconds: 300,
+        sectionTimes: [{ seconds: 100, publishedPlace: 1 }, { seconds: 200, publishedPlace: 1 }]
+      },
+      {
+        id: 2,
+        fullName: 'DNF RIDER',
+        displayedNumber: '2A',
+        brand: 'HUS',
+        className: 'A',
+        overallPosition: 10,
+        totalTimeSeconds: null,
+        sectionTimes: [{ seconds: 90, publishedPlace: 1 }, null]
+      },
+      {
+        id: 3,
+        fullName: 'FINISHER B',
+        displayedNumber: '3A',
+        brand: 'BET',
+        className: 'A',
+        overallPosition: 2,
+        totalTimeSeconds: 320,
+        sectionTimes: [{ seconds: 110, publishedPlace: 2 }, { seconds: 210, publishedPlace: 2 }]
+      }
+    ]);
+
+    expect(standings.find((r) => r.fullName === 'DNF RIDER')).toMatchObject({
+      classPosition: 3,
+      classBehindByLeader: null,
+      overallBehindByLeader: null
+    });
   });
 });
 

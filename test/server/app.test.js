@@ -360,8 +360,8 @@ describe('archive API', () => {
         }
       ],
       trends: {
-        overallPercentiles: [50, 50],
-        classPercentiles: [100, 100]
+        overallPercentiles: [50, null],
+        classPercentiles: [100, null]
       }
     });
   });

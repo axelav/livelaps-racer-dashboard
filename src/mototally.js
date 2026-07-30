@@ -418,10 +418,36 @@ export function deriveStandings(rawRecords) {
   const totals = rawRecords.map((r) => r.totalTimeSeconds).filter((v) => v != null);
   const overallLeaderTotal = totals.length ? Math.min(...totals) : 0;
 
+  const timedClassPosition = (ri) => {
+    const me = rawRecords[ri];
+    let pos = 1;
+    for (let j = 0; j < n; j++) {
+      if (j === ri) continue;
+      const other = rawRecords[j];
+      if (other.className !== me.className) continue;
+      if (other.totalTimeSeconds != null && me.totalTimeSeconds == null) {
+        pos++;
+      } else if (
+        other.totalTimeSeconds != null &&
+        me.totalTimeSeconds != null &&
+        other.totalTimeSeconds < me.totalTimeSeconds
+      ) {
+        pos++;
+      } else if (
+        other.totalTimeSeconds == null &&
+        me.totalTimeSeconds == null &&
+        other.overallPosition < me.overallPosition
+      ) {
+        pos++;
+      }
+    }
+    return pos;
+  };
+
   return rawRecords.map((r, ri) => {
     const classMates = rawRecords.filter((x) => x.className === r.className && x.totalTimeSeconds != null);
     const classLeaderTotal = classMates.length ? Math.min(...classMates.map((x) => x.totalTimeSeconds)) : 0;
-    const classPosition = 1 + classMates.filter((x) => x.totalTimeSeconds < r.totalTimeSeconds).length;
+    const classPosition = timedClassPosition(ri);
 
     const sections = r.sectionTimes.map((st, si) => {
       const gap = gapAhead(si, ri);

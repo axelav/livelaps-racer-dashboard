@@ -369,4 +369,30 @@ describe('history transforms', () => {
     expect(history.trends.overallPercentiles).toEqual([94, 75]);
     expect(history.trends.classPercentiles).toEqual([100, 80]);
   });
+
+  it('omits timed DNF entries from percentile trends', () => {
+    const history = buildRacerHistory([
+      {
+        sourceRaceId: 'mototally:ECEA/Enduro/2025/15/O1',
+        provider: 'mototally',
+        raceName: 'Moonshine Enduro',
+        eventDate: '2025-09-21',
+        eventDateProvenance: 'source',
+        fullName: 'AXEL ANDERSON',
+        overallPosition: 115,
+        fieldSize: 120,
+        classPosition: 7,
+        classSize: 7,
+        totalTimeSeconds: null,
+        entry: { scoring: undefined }
+      }
+    ]);
+
+    expect(history.races[0]).toMatchObject({
+      overallPercentile: null,
+      classPercentile: null
+    });
+    expect(history.trends.overallPercentiles).toEqual([null]);
+    expect(history.trends.classPercentiles).toEqual([null]);
+  });
 });
