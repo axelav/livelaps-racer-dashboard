@@ -52,8 +52,8 @@ describe('history dashboard', () => {
       onSelectRace: vi.fn()
     });
 
-    expect(container.textContent).toContain('Overall percentile');
-    expect(container.textContent).toContain('Class percentile');
+    expect(container.textContent).toContain('Overall position');
+    expect(container.textContent).toContain('Class position');
     expect(container.querySelector('[data-slot="ledger"]')).toBeNull();
 
     const openLedger = container.querySelector('[data-slot="openLedger"]');
@@ -147,7 +147,13 @@ describe('history dashboard', () => {
       onSelectRace: vi.fn()
     });
 
-    expect(container.textContent).toContain('Relative to the official results sheet');
+    expect(container.textContent).toContain('Overall position');
+    expect(container.textContent).toContain('Class position');
+    expect(container.textContent).toContain('Overall result at each archived event');
+    expect(Array.from(container.querySelectorAll('text.end-label')).map((label) => label.textContent)).toEqual([
+      '47',
+      '5'
+    ]);
     expect(container.querySelectorAll('circle.pt-dnf')).toHaveLength(2);
     expect(container.querySelectorAll('circle.pt-no-result')).toHaveLength(2);
     container.querySelector('[data-slot="openLedger"]').click();

@@ -143,3 +143,26 @@ describe('lineChart result status markers', () => {
     expect(c.querySelector('circle.pt-no-result').getAttribute('cy')).toBe('188');
   });
 });
+
+describe('lineChart tooltip values', () => {
+  it('uses configured tooltip text instead of the plotted numeric value', () => {
+    const c = render({
+      labels: ['Foggy'],
+      series: [
+        {
+          name: 'Overall position',
+          color: '#000',
+          values: [47],
+          tooltipValues: ['47 / 79 · 42 percentile']
+        }
+      ]
+    });
+    const svg = c.querySelector('svg');
+    svg.getBoundingClientRect = () => ({ left: 0, top: 0, width: 520, height: 220 });
+    Object.defineProperty(c, 'clientWidth', { value: 520 });
+
+    c.querySelector('rect.hit').dispatchEvent(new MouseEvent('pointermove', { clientX: 260, clientY: 40 }));
+
+    expect(c.querySelector('.tooltip').textContent).toContain('47 / 79 · 42 percentile');
+  });
+});

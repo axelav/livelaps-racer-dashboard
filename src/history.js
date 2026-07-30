@@ -32,6 +32,20 @@ function raceResult(race) {
   return race.resultStatus === 'official_dnf' && race.resultNote ? `${base} · ${race.resultNote}` : base;
 }
 
+function positionValue(race, field) {
+  if (race.resultStatus === 'no_result') return null;
+  return field === 'overall' ? race.overallPosition : race.classPosition;
+}
+
+function positionTooltip(race, field) {
+  if (race.resultStatus === 'no_result') return race.resultNote || 'No final result';
+  const position = field === 'overall' ? race.overallPosition : race.classPosition;
+  const size = field === 'overall' ? race.fieldSize : race.classSize;
+  const percentile = field === 'overall' ? race.overallPercentile : race.classPercentile;
+  const base = `${position ?? '—'} / ${size ?? '—'}`;
+  return percentile == null ? base : `${base} · ${percentile} percentile`;
+}
+
 export function renderHistory(container, { history, selectedSourceRaceId, onSelectRace }) {
   const races = history.races ?? [];
   container.innerHTML = `
@@ -45,13 +59,13 @@ export function renderHistory(container, { history, selectedSourceRaceId, onSele
       <div data-slot="historyData">
         <div class="history-trends">
           <div class="card">
-            <h3>Overall percentile</h3>
-            <p class="card-sub">Relative to the official results sheet at each archived event</p>
+            <h3>Overall position</h3>
+            <p class="card-sub">Overall result at each archived event</p>
             <div data-slot="overallTrend"></div>
           </div>
           <div class="card">
-            <h3>Class percentile</h3>
-            <p class="card-sub">Relative to the racer's official class result at each archived event</p>
+            <h3>Class position</h3>
+            <p class="card-sub">Class result at each archived event</p>
             <div data-slot="classTrend"></div>
           </div>
         </div>
@@ -118,38 +132,36 @@ export function renderHistory(container, { history, selectedSourceRaceId, onSele
     const [, month, day] = date.split('-');
     return `${Number(month)}/${Number(day)}`;
   };
-  // Percentiles are higher-is-better: plot them upward, bounded to 0..100.
+  // Positions are lower-is-better: plot them upward with 1 at the top.
   lineChart(slot('overallTrend'), {
-    ariaLabel: 'Overall percentile across archived events',
+    ariaLabel: 'Overall position across archived events',
     labels,
     xTick: dateTick,
     maxXTicks: 6,
-    invert: false,
-    clampMin: 0,
-    clampMax: 100,
+    clampMin: 1,
     series: [
       {
-        name: 'Overall percentile',
+        name: 'Overall position',
         color: '#2a78d6',
-        values: history.trends?.overallPercentiles ?? races.map((race) => race.overallPercentile),
+        values: races.map((race) => positionValue(race, 'overall')),
+        tooltipValues: races.map((race) => positionTooltip(race, 'overall')),
         statuses: races.map((race) => race.resultStatus),
         statusLabels: races.map((race) => race.resultNote)
       }
     ]
   });
   lineChart(slot('classTrend'), {
-    ariaLabel: 'Class percentile across archived events',
+    ariaLabel: 'Class position across archived events',
     labels,
     xTick: dateTick,
     maxXTicks: 6,
-    invert: false,
-    clampMin: 0,
-    clampMax: 100,
+    clampMin: 1,
     series: [
       {
-        name: 'Class percentile',
+        name: 'Class position',
         color: '#1baf7a',
-        values: history.trends?.classPercentiles ?? races.map((race) => race.classPercentile),
+        values: races.map((race) => positionValue(race, 'class')),
+        tooltipValues: races.map((race) => positionTooltip(race, 'class')),
         statuses: races.map((race) => race.resultStatus),
         statusLabels: races.map((race) => race.resultNote)
       }

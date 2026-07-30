@@ -248,8 +248,9 @@ export function lineChart(container, opts) {
         const v = s.values[i];
         const status = s.statuses?.[i];
         const note = s.statusLabels?.[i];
-        let value = v == null ? '—' : Math.round(v) + (opts.suffix || '');
-        if (status === 'official_dnf' && note) value += ` · ${note}`;
+        let value = s.tooltipValues?.[i];
+        if (value == null) value = v == null ? '—' : Math.round(v) + (opts.suffix || '');
+        if (status === 'official_dnf' && note && !String(value).includes(note)) value += ` · ${note}`;
         if (status === 'no_result') value = note || 'No final result';
         ttRow(tip, s.color, s.name, value);
       });
