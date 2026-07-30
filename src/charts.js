@@ -187,8 +187,23 @@ export function lineChart(container, opts) {
     );
     s.values.forEach((v, i) => {
       if (v == null) return;
+      const status = s.statuses?.[i];
       svg.appendChild(
-        el('circle', { class: 'pt', cx: xAt(i), cy: yAt(v), r: 4, fill: s.color, stroke: cssVar(container, '--surface-1'), 'stroke-width': 2 })
+        el('circle', {
+          class: status === 'official_dnf' ? 'pt pt-dnf' : 'pt',
+          cx: xAt(i),
+          cy: yAt(v),
+          r: 4,
+          fill: status === 'official_dnf' ? 'transparent' : s.color,
+          stroke: status === 'official_dnf' ? s.color : cssVar(container, '--surface-1'),
+          'stroke-width': status === 'official_dnf' ? 2.5 : 2
+        })
+      );
+    });
+    s.values.forEach((v, i) => {
+      if (v != null || s.statuses?.[i] !== 'no_result') return;
+      svg.appendChild(
+        el('circle', { class: 'pt-no-result', cx: xAt(i), cy: plotB, r: 3, fill: cssVar(container, '--text-muted') })
       );
     });
     let lastI = s.values.length - 1;
@@ -231,7 +246,12 @@ export function lineChart(container, opts) {
       tip.appendChild(title);
       opts.series.forEach((s) => {
         const v = s.values[i];
-        ttRow(tip, s.color, s.name, v == null ? '—' : Math.round(v) + (opts.suffix || ''));
+        const status = s.statuses?.[i];
+        const note = s.statusLabels?.[i];
+        let value = v == null ? '—' : Math.round(v) + (opts.suffix || '');
+        if (status === 'official_dnf' && note) value += ` · ${note}`;
+        if (status === 'no_result') value = note || 'No final result';
+        ttRow(tip, s.color, s.name, value);
       });
     }, localX, localY);
   }

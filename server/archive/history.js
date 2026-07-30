@@ -12,14 +12,26 @@ export const toPercentile = (position, size) => {
   const percentile = Math.round((1 - (position - 1) / size) * 100);
   return Math.max(0, Math.min(100, percentile));
 };
+function resultStatusFor(entry) {
+  if (entry.provider !== 'mototally') return { status: 'finished', note: null };
+
+  const source = entry.entry ?? {};
+  if (source.scoring === 'points') {
+    if (source.totalPoints == null) return { status: 'no_result', note: 'No final result' };
+    if (Number.isFinite(source.maxChk) && Number.isFinite(source.checkCount) && source.maxChk < source.checkCount) {
+      return { status: 'official_dnf', note: `DNF after ${source.maxChk} of ${source.checkCount} checks` };
+    }
+    return { status: 'finished', note: null };
+  }
+
+  if (entry.totalTimeSeconds == null) return { status: 'no_result', note: 'No final result' };
+  return { status: 'finished', note: null };
+}
+
 export function buildRacerHistory(entries) {
   const races = entries.map((entry) => {
-    const timedDnf = entry.provider === 'mototally' && entry.totalTimeSeconds == null && entry.entry?.scoring !== 'points';
-    const pointsDnf =
-      entry.provider === 'mototally' &&
-      entry.entry?.scoring === 'points' &&
-      entry.entry.maxChk < entry.entry.checkCount;
-    const dnf = timedDnf || pointsDnf;
+    const resultStatus = resultStatusFor(entry);
+    const hasPercentile = resultStatus.status !== 'no_result';
     return {
       sourceRaceId: entry.sourceRaceId,
       raceName: entry.raceName,
@@ -29,12 +41,14 @@ export function buildRacerHistory(entries) {
       fullName: entry.fullName,
       overallPosition: entry.overallPosition,
       fieldSize: entry.fieldSize,
-      overallPercentile: dnf ? null : toPercentile(entry.overallPosition, entry.fieldSize),
+      overallPercentile: hasPercentile ? toPercentile(entry.overallPosition, entry.fieldSize) : null,
       classPosition: entry.classPosition,
       classSize: entry.classSize,
-      classPercentile: dnf ? null : toPercentile(entry.classPosition, entry.classSize),
+      classPercentile: hasPercentile ? toPercentile(entry.classPosition, entry.classSize) : null,
       totalTimeSeconds: entry.totalTimeSeconds,
-      totalPoints: entry.entry?.totalPoints ?? null
+      totalPoints: entry.entry?.totalPoints ?? null,
+      resultStatus: resultStatus.status,
+      resultNote: resultStatus.note
     };
   });
 

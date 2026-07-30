@@ -104,4 +104,55 @@ describe('history dashboard', () => {
     expect(container.querySelector('svg')).toBeNull();
     expect(container.innerHTML).not.toContain('NaN');
   });
+
+  it('passes result statuses to trend charts and labels ledger statuses', () => {
+    renderHistory(container, {
+      history: {
+        racerName: 'Ryan Canavan',
+        races: [
+          {
+            sourceRaceId: 'mototally:points-dnf',
+            raceName: 'Foggy Mountain',
+            eventDate: '2026-07-19',
+            provider: 'mototally',
+            overallPosition: 47,
+            fieldSize: 79,
+            overallPercentile: 42,
+            classPosition: 5,
+            classSize: 10,
+            classPercentile: 60,
+            totalPoints: 50,
+            resultStatus: 'official_dnf',
+            resultNote: 'DNF after 11 of 13 checks'
+          },
+          {
+            sourceRaceId: 'mototally:no-result',
+            raceName: 'Pine Glen',
+            eventDate: '2026-07-26',
+            provider: 'mototally',
+            overallPosition: 4,
+            fieldSize: 50,
+            overallPercentile: null,
+            classPosition: 1,
+            classSize: 9,
+            classPercentile: null,
+            totalTimeSeconds: null,
+            resultStatus: 'no_result',
+            resultNote: 'No final result'
+          }
+        ],
+        trends: { overallPercentiles: [42, null], classPercentiles: [60, null] }
+      },
+      selectedSourceRaceId: null,
+      onSelectRace: vi.fn()
+    });
+
+    expect(container.textContent).toContain('Relative to the official results sheet');
+    expect(container.querySelectorAll('circle.pt-dnf')).toHaveLength(2);
+    expect(container.querySelectorAll('circle.pt-no-result')).toHaveLength(2);
+    container.querySelector('[data-slot="openLedger"]').click();
+    const rows = container.querySelectorAll('[data-slot="ledgerRows"] tr');
+    expect(rows[0].textContent).toContain('50 pts · DNF after 11 of 13 checks');
+    expect(rows[1].textContent).toContain('No final result');
+  });
 });

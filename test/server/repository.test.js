@@ -390,13 +390,15 @@ describe('history transforms', () => {
 
     expect(history.races[0]).toMatchObject({
       overallPercentile: null,
-      classPercentile: null
+      classPercentile: null,
+      resultStatus: 'no_result',
+      resultNote: 'No final result'
     });
     expect(history.trends.overallPercentiles).toEqual([null]);
     expect(history.trends.classPercentiles).toEqual([null]);
   });
 
-  it('omits points entries with missed checks from percentile trends', () => {
+  it('keeps official points-DNF percentiles and marks them as DNFs', () => {
     const history = buildRacerHistory([
       {
         sourceRaceId: 'mototally:ECEA/Enduro/2025/3/O1',
@@ -415,11 +417,13 @@ describe('history transforms', () => {
     ]);
 
     expect(history.races[0]).toMatchObject({
-      overallPercentile: null,
-      classPercentile: null,
+      overallPercentile: 12,
+      classPercentile: 33,
+      resultStatus: 'official_dnf',
+      resultNote: 'DNF after 12 of 14 checks',
       totalPoints: 121
     });
-    expect(history.trends.overallPercentiles).toEqual([null]);
-    expect(history.trends.classPercentiles).toEqual([null]);
+    expect(history.trends.overallPercentiles).toEqual([12]);
+    expect(history.trends.classPercentiles).toEqual([33]);
   });
 });

@@ -366,6 +366,13 @@ h1 {
   font-size: 12px;
   font-weight: 650;
 }
+.pt-dnf {
+  stroke-dasharray: 2 2;
+}
+.pt-no-result {
+  opacity: 0.75;
+}
+
 
 .tooltip {
   position: absolute;

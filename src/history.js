@@ -26,6 +26,12 @@ function raceDate(race) {
   return race.eventDateProvenance === 'source' ? race.eventDate : `${race.eventDate} (unverified)`;
 }
 
+function raceResult(race) {
+  if (race.resultStatus === 'no_result') return race.resultNote || 'No final result';
+  const base = race.totalPoints != null ? `${race.totalPoints} pts` : formatDuration(race.totalTimeSeconds);
+  return race.resultStatus === 'official_dnf' && race.resultNote ? `${base} · ${race.resultNote}` : base;
+}
+
 export function renderHistory(container, { history, selectedSourceRaceId, onSelectRace }) {
   const races = history.races ?? [];
   container.innerHTML = `
@@ -40,12 +46,12 @@ export function renderHistory(container, { history, selectedSourceRaceId, onSele
         <div class="history-trends">
           <div class="card">
             <h3>Overall percentile</h3>
-            <p class="card-sub">Relative to every finisher at each archived event</p>
+            <p class="card-sub">Relative to the official results sheet at each archived event</p>
             <div data-slot="overallTrend"></div>
           </div>
           <div class="card">
             <h3>Class percentile</h3>
-            <p class="card-sub">Relative to the racer's class at each archived event</p>
+            <p class="card-sub">Relative to the racer's official class result at each archived event</p>
             <div data-slot="classTrend"></div>
           </div>
         </div>
@@ -125,7 +131,9 @@ export function renderHistory(container, { history, selectedSourceRaceId, onSele
       {
         name: 'Overall percentile',
         color: '#2a78d6',
-        values: history.trends?.overallPercentiles ?? races.map((race) => race.overallPercentile)
+        values: history.trends?.overallPercentiles ?? races.map((race) => race.overallPercentile),
+        statuses: races.map((race) => race.resultStatus),
+        statusLabels: races.map((race) => race.resultNote)
       }
     ]
   });
@@ -141,7 +149,9 @@ export function renderHistory(container, { history, selectedSourceRaceId, onSele
       {
         name: 'Class percentile',
         color: '#1baf7a',
-        values: history.trends?.classPercentiles ?? races.map((race) => race.classPercentile)
+        values: history.trends?.classPercentiles ?? races.map((race) => race.classPercentile),
+        statuses: races.map((race) => race.resultStatus),
+        statusLabels: races.map((race) => race.resultNote)
       }
     ]
   });
@@ -160,7 +170,7 @@ export function renderHistory(container, { history, selectedSourceRaceId, onSele
       sourceLabel(race.provider),
       `${race.overallPosition ?? '—'} / ${race.fieldSize ?? '—'}`,
       `${race.classPosition ?? '—'} / ${race.classSize ?? '—'}`,
-      race.totalPoints != null ? `${race.totalPoints} pts` : formatDuration(race.totalTimeSeconds)
+      raceResult(race)
     ].forEach((value, index) => {
       const cell = document.createElement('td');
       cell.dataset.label = ['Date', 'Race', 'Source', 'Overall', 'Class', 'Result'][index];

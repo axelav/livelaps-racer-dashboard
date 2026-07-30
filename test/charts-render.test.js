@@ -102,3 +102,44 @@ describe('lineChart clamped values', () => {
     expect(pointYs.every((y) => y >= 16 && y <= 194)).toBe(true);
   });
 });
+
+describe('lineChart result status markers', () => {
+  it('marks official DNFs without dropping their plotted value', () => {
+    const c = render({
+      labels: ['finish', 'dnf'],
+      invert: false,
+      series: [
+        {
+          name: 'pct',
+          color: '#000',
+          values: [80, 33],
+          statuses: ['finished', 'official_dnf'],
+          statusLabels: ['', 'DNF after 12 of 14 checks']
+        }
+      ]
+    });
+
+    expect(c.querySelectorAll('circle.pt')).toHaveLength(2);
+    expect(c.querySelector('circle.pt-dnf')).not.toBeNull();
+  });
+
+  it('shows no-result events as muted baseline markers instead of percentile points', () => {
+    const c = render({
+      labels: ['finish', 'empty'],
+      invert: false,
+      series: [
+        {
+          name: 'pct',
+          color: '#000',
+          values: [80, null],
+          statuses: ['finished', 'no_result'],
+          statusLabels: ['', 'No final result']
+        }
+      ]
+    });
+
+    expect(c.querySelectorAll('circle.pt')).toHaveLength(1);
+    expect(c.querySelector('circle.pt-no-result')).not.toBeNull();
+    expect(c.querySelector('circle.pt-no-result').getAttribute('cy')).toBe('188');
+  });
+});
