@@ -415,7 +415,10 @@ export function deriveStandings(rawRecords) {
     return pos;
   };
 
-  const totals = rawRecords.map((r) => r.totalTimeSeconds).filter((v) => v != null);
+  const finishedTimedRace = (r) =>
+    r.totalTimeSeconds != null && r.sectionTimes.every((st) => st?.seconds != null);
+
+  const totals = rawRecords.filter(finishedTimedRace).map((r) => r.totalTimeSeconds);
   const overallLeaderTotal = totals.length ? Math.min(...totals) : 0;
 
   const timedClassPosition = (ri) => {
@@ -425,19 +428,13 @@ export function deriveStandings(rawRecords) {
       if (j === ri) continue;
       const other = rawRecords[j];
       if (other.className !== me.className) continue;
-      if (other.totalTimeSeconds != null && me.totalTimeSeconds == null) {
+      const otherFinished = finishedTimedRace(other);
+      const meFinished = finishedTimedRace(me);
+      if (otherFinished && !meFinished) {
         pos++;
-      } else if (
-        other.totalTimeSeconds != null &&
-        me.totalTimeSeconds != null &&
-        other.totalTimeSeconds < me.totalTimeSeconds
-      ) {
+      } else if (otherFinished && meFinished && other.totalTimeSeconds < me.totalTimeSeconds) {
         pos++;
-      } else if (
-        other.totalTimeSeconds == null &&
-        me.totalTimeSeconds == null &&
-        other.overallPosition < me.overallPosition
-      ) {
+      } else if (!otherFinished && !meFinished && other.overallPosition < me.overallPosition) {
         pos++;
       }
     }
@@ -445,7 +442,7 @@ export function deriveStandings(rawRecords) {
   };
 
   return rawRecords.map((r, ri) => {
-    const classMates = rawRecords.filter((x) => x.className === r.className && x.totalTimeSeconds != null);
+    const classMates = rawRecords.filter((x) => x.className === r.className && finishedTimedRace(x));
     const classLeaderTotal = classMates.length ? Math.min(...classMates.map((x) => x.totalTimeSeconds)) : 0;
     const classPosition = timedClassPosition(ri);
 
@@ -472,8 +469,8 @@ export function deriveStandings(rawRecords) {
       overallPosition: r.overallPosition,
       classPosition,
       avgSpeedTotal: null,
-      overallBehindByLeader: r.totalTimeSeconds == null ? null : formatHMS(r.totalTimeSeconds - overallLeaderTotal),
-      classBehindByLeader: r.totalTimeSeconds == null ? null : formatHMS(r.totalTimeSeconds - classLeaderTotal),
+      overallBehindByLeader: finishedTimedRace(r) ? formatHMS(r.totalTimeSeconds - overallLeaderTotal) : null,
+      classBehindByLeader: finishedTimedRace(r) ? formatHMS(r.totalTimeSeconds - classLeaderTotal) : null,
       sections
     };
   });

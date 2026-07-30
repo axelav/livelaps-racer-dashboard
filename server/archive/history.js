@@ -15,6 +15,11 @@ export const toPercentile = (position, size) => {
 export function buildRacerHistory(entries) {
   const races = entries.map((entry) => {
     const timedDnf = entry.provider === 'mototally' && entry.totalTimeSeconds == null && entry.entry?.scoring !== 'points';
+    const pointsDnf =
+      entry.provider === 'mototally' &&
+      entry.entry?.scoring === 'points' &&
+      entry.entry.maxChk < entry.entry.checkCount;
+    const dnf = timedDnf || pointsDnf;
     return {
       sourceRaceId: entry.sourceRaceId,
       raceName: entry.raceName,
@@ -24,10 +29,10 @@ export function buildRacerHistory(entries) {
       fullName: entry.fullName,
       overallPosition: entry.overallPosition,
       fieldSize: entry.fieldSize,
-      overallPercentile: timedDnf ? null : toPercentile(entry.overallPosition, entry.fieldSize),
+      overallPercentile: dnf ? null : toPercentile(entry.overallPosition, entry.fieldSize),
       classPosition: entry.classPosition,
       classSize: entry.classSize,
-      classPercentile: timedDnf ? null : toPercentile(entry.classPosition, entry.classSize),
+      classPercentile: dnf ? null : toPercentile(entry.classPosition, entry.classSize),
       totalTimeSeconds: entry.totalTimeSeconds,
       totalPoints: entry.entry?.totalPoints ?? null
     };

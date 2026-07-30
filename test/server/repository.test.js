@@ -395,4 +395,31 @@ describe('history transforms', () => {
     expect(history.trends.overallPercentiles).toEqual([null]);
     expect(history.trends.classPercentiles).toEqual([null]);
   });
+
+  it('omits points entries with missed checks from percentile trends', () => {
+    const history = buildRacerHistory([
+      {
+        sourceRaceId: 'mototally:ECEA/Enduro/2025/3/O1',
+        provider: 'mototally',
+        raceName: 'Sandy Lane Enduro',
+        eventDate: '2025-03-23',
+        eventDateProvenance: 'source',
+        fullName: 'AXEL ANDERSON',
+        overallPosition: 125,
+        fieldSize: 141,
+        classPosition: 7,
+        classSize: 9,
+        totalTimeSeconds: null,
+        entry: { scoring: 'points', maxChk: 12, checkCount: 14, totalPoints: 121 }
+      }
+    ]);
+
+    expect(history.races[0]).toMatchObject({
+      overallPercentile: null,
+      classPercentile: null,
+      totalPoints: 121
+    });
+    expect(history.trends.overallPercentiles).toEqual([null]);
+    expect(history.trends.classPercentiles).toEqual([null]);
+  });
 });

@@ -313,11 +313,11 @@ function renderPointsBreakdown(slot, subhead, racer, fieldSize, classSize, color
   const labels = sections.map((s) => s.sectionName);
   const checkTick = (i) => `C${i + 1}`;
 
-  subhead.appendChild(
-    document.createTextNode(
-      ` · Class ${racer.className} · finished on ${racer.totalPoints} points (${racer.totalEmergencySeconds} emergency seconds) across ${checkCount} checks · ${timedCheckCount} timed`
-    )
-  );
+  const scoreSummary =
+    racer.maxChk >= checkCount
+      ? `finished on ${racer.totalPoints} points (${racer.totalEmergencySeconds} emergency seconds) across ${checkCount} checks · ${timedCheckCount} timed`
+      : `DNF after ${racer.maxChk} of ${checkCount} checks · ${racer.totalPoints} points (${racer.totalEmergencySeconds} emergency seconds) · ${timedCheckCount} timed`;
+  subhead.appendChild(document.createTextNode(` · Class ${racer.className} · ${scoreSummary}`));
 
   if (racer.maxChk >= checkCount) {
     slot('statGapLeader').textContent = `${racer.pointsBehindOverallLeader} pts`;

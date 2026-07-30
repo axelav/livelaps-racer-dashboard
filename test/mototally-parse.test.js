@@ -59,7 +59,7 @@ describe('deriveStandings for timed races', () => {
         brand: 'HUS',
         className: 'A',
         overallPosition: 10,
-        totalTimeSeconds: null,
+        totalTimeSeconds: 90,
         sectionTimes: [{ seconds: 90, publishedPlace: 1 }, null]
       },
       {

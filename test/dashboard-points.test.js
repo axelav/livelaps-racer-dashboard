@@ -57,6 +57,7 @@ describe('renderDashboard for a points-scored racer', () => {
     expect(c.querySelector('[data-slot="statGapLeaderSub"]').textContent).toBe(
       'completed 7 of 13 checks'
     );
+    expect(c.querySelector('[data-slot="subhead"]').textContent).toContain('DNF after 7 of 13 checks');
   });
 
   it('drops the speed card and repurposes the gap chart for points per check', () => {
