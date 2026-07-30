@@ -80,6 +80,45 @@ describe('deriveStandings for timed races', () => {
       overallBehindByLeader: null
     });
   });
+
+  it('uses the official final positions for the last timed section', () => {
+    const standings = deriveStandings([
+      {
+        id: 1,
+        fullName: 'RYAN',
+        displayedNumber: '21A',
+        brand: 'KTM',
+        className: 'AA',
+        overallPosition: 33,
+        totalTimeSeconds: 2189,
+        sectionTimes: [{ seconds: 10, publishedPlace: 6 }, { seconds: 10, publishedPlace: 2 }]
+      },
+      {
+        id: 2,
+        fullName: 'CLASSMATE',
+        displayedNumber: '22A',
+        brand: 'KTM',
+        className: 'AA',
+        overallPosition: 13,
+        totalTimeSeconds: 2000,
+        sectionTimes: [{ seconds: 5, publishedPlace: 1 }, { seconds: 30, publishedPlace: 10 }]
+      },
+      {
+        id: 3,
+        fullName: 'OTHER CLASS',
+        displayedNumber: '23A',
+        brand: 'KTM',
+        className: 'A',
+        overallPosition: 1,
+        totalTimeSeconds: 1000,
+        sectionTimes: [{ seconds: 1, publishedPlace: 1 }, { seconds: 1, publishedPlace: 1 }]
+      }
+    ]);
+
+    const ryan = standings.find((r) => r.fullName === 'RYAN');
+    expect(ryan.sections[0]).toMatchObject({ overallPosition: 3, classPosition: 2 });
+    expect(ryan.sections.at(-1)).toMatchObject({ overallPosition: 33, classPosition: ryan.classPosition });
+  });
 });
 
 describe('pickContainingGroup', () => {

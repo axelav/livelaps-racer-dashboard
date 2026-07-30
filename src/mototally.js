@@ -451,8 +451,8 @@ export function deriveStandings(rawRecords) {
       return {
         sectionName: `Test ${si + 1}`,
         totalCumulatedTime: cum[ri][si] == null ? null : formatHMS(cum[ri][si]),
-        overallPosition: cumulativePosition(si, ri, false),
-        classPosition: cumulativePosition(si, ri, true),
+        overallPosition: si === sectionCount - 1 && finishedTimedRace(r) ? r.overallPosition : cumulativePosition(si, ri, false),
+        classPosition: si === sectionCount - 1 && finishedTimedRace(r) ? classPosition : cumulativePosition(si, ri, true),
         sectionOverallPosition: st?.publishedPlace ?? null,
         sectionClassPosition: sectionClassRank(si, ri),
         avgSpeed: null,

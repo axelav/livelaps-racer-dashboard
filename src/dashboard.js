@@ -229,8 +229,8 @@ export function renderDashboard(
     slot('statSpeed').closest('.stat-tile').remove();
   }
 
-  slot('overallCardSub').textContent = `Cumulative position among all ${fieldSize} finishers, after each section`;
-  slot('classCardSub').textContent = `Cumulative position within ${racer.className} (${classSize} riders), after each section`;
+  slot('overallCardSub').textContent = `Estimated from cumulative section times; final point is the official result`;
+  slot('classCardSub').textContent = `Estimated within ${racer.className}; final point is the official class result`;
 
   lineChart(slot('chartOverall'), {
     ariaLabel: 'Overall position by section',

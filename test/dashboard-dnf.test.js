@@ -60,5 +60,8 @@ describe('renderDashboard for a timed DNF', () => {
     expect(c.querySelector('[data-slot="statClass"]').textContent.replace(/\s+/g, ' ')).toContain('7 / 7');
     expect(c.querySelector('[data-slot="statGapLeader"]').textContent).toBe('—');
     expect(c.querySelector('[data-slot="statGapLeaderSub"]').textContent).toBe('behind class leader by —');
+    expect(c.querySelector('[data-slot="chartOverall"]').closest('.card').textContent).toContain(
+      'Estimated from cumulative section times; final point is the official result'
+    );
   });
 });
