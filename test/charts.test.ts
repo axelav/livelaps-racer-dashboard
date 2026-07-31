@@ -21,16 +21,16 @@ describe('niceTicks', () => {
   it('handles a small fractional range', () => {
     expect(niceTicks(14.5, 18.5, 4)).toEqual({
       min: 14,
-      max: 20,
-      ticks: [14, 16, 18, 20]
+      max: 19,
+      ticks: [14, 15, 16, 17, 18, 19]
     });
   });
 
-  it('handles a zero-based range', () => {
-    expect(niceTicks(0, 23.5, 4)).toEqual({
+  it('keeps large position ranges close to their observed values', () => {
+    expect(niceTicks(1, 550, 4)).toEqual({
       min: 0,
-      max: 40,
-      ticks: [0, 20, 40]
+      max: 600,
+      ticks: [0, 200, 400, 600]
     });
   });
 });

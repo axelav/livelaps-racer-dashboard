@@ -67,8 +67,9 @@ export function niceTicks(min: number, max: number, count: number): NiceTicks {
     min -= 1;
     max += 1;
   }
-  const range = niceNum(max - min, false);
-  const step = niceNum(range / (count - 1), true);
+  // Pick the step from the data span itself. Rounding the span before deriving
+  // its step can expand a 550-place history to a 1,000-place axis.
+  const step = niceNum((max - min) / (count - 1), true);
   const niceMin = Math.floor(min / step) * step;
   const niceMax = Math.ceil(max / step) * step;
   const ticks: number[] = [];
