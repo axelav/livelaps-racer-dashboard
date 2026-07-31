@@ -63,6 +63,8 @@ describe('history dashboard', () => {
 
     expect(container.textContent).toContain('Overall position');
     expect(container.textContent).toContain('Class position');
+    expect(container.querySelectorAll('.chart-expand')).toHaveLength(2);
+    expect(container.querySelectorAll('.chart-lightbox')).toHaveLength(1);
     expect(container.querySelector('[data-slot="ledger"]')).toBeNull();
 
     const openLedger = mustQuery<HTMLButtonElement>(container, '[data-slot="openLedger"]');

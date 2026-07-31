@@ -64,6 +64,8 @@ describe('renderDashboard for a timed DNF', () => {
     expect(mustQuery<HTMLElement>(c, '[data-slot="chartOverall"]').closest('.card')?.textContent).toContain(
       'Estimated from cumulative section times; final point is the official result'
     );
+    expect(c.querySelectorAll('.chart-expand')).toHaveLength(4);
+    expect(c.querySelectorAll('.chart-lightbox')).toHaveLength(1);
   });
   it('renders partial Sprint Enduro data without a final classification', () => {
     const container = document.createElement('div');

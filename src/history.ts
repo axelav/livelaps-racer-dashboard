@@ -1,3 +1,4 @@
+import { createChartLightbox, type ChartLightbox, type ChartRenderer } from './chart-lightbox.js';
 import { lineChart } from './charts.js';
 import type { HistoryRace, Provider, RacerHistory } from './domain.js';
 
@@ -65,6 +66,11 @@ function positionTooltip(race: HistoryRace, field: 'overall' | 'class'): string 
   return percentile == null ? base : `${base} · ${percentile} percentile`;
 }
 
+function renderExpandableChart(lightbox: ChartLightbox, chart: HTMLElement, render: ChartRenderer): void {
+  render(chart);
+  lightbox.register(chart, render);
+}
+
 export function renderHistory(container: HTMLElement, { history, selectedSourceRaceId, onSelectRace }: RenderHistoryOptions): void {
   const races = history.races ?? [];
   container.innerHTML = `
@@ -121,6 +127,8 @@ export function renderHistory(container: HTMLElement, { history, selectedSourceR
     return;
   }
 
+  const chartLightbox = createChartLightbox(container);
+
   const resultLabel = races.length === 1 ? '1 result' : `${races.length} results`;
   slot('ledgerSummary').textContent = `${resultLabel} across archived events`;
   slot('ledgerDialogSummary').textContent = `${resultLabel} across archived events`;
@@ -153,7 +161,7 @@ export function renderHistory(container: HTMLElement, { history, selectedSourceR
     return `${Number(month)}/${Number(day)}`;
   };
   // Positions are lower-is-better: plot them upward with 1 at the top.
-  lineChart(slot('overallTrend'), {
+  const renderOverallTrend = (chart: HTMLElement): void => lineChart(chart, {
     ariaLabel: 'Overall position across archived events',
     labels,
     xTick: dateTick,
@@ -170,7 +178,8 @@ export function renderHistory(container: HTMLElement, { history, selectedSourceR
       }
     ]
   });
-  lineChart(slot('classTrend'), {
+  renderExpandableChart(chartLightbox, slot('overallTrend'), renderOverallTrend);
+  const renderClassTrend = (chart: HTMLElement): void => lineChart(chart, {
     ariaLabel: 'Class position across archived events',
     labels,
     xTick: dateTick,
@@ -187,6 +196,7 @@ export function renderHistory(container: HTMLElement, { history, selectedSourceR
       }
     ]
   });
+  renderExpandableChart(chartLightbox, slot('classTrend'), renderClassTrend);
 
   const ledger = slot<HTMLTableSectionElement>('ledgerRows');
   const ledgerLabels = ['Date', 'Race', 'Source', 'Overall', 'Class', 'Result'];

@@ -1,3 +1,4 @@
+import { createChartLightbox, type ChartLightbox, type ChartRenderer } from './chart-lightbox.js';
 import { lineChart, barChart } from './charts.js';
 import { deriveSectionSeries, formatDuration, parseDuration } from './livelaps.js';
 import type { PointsSection, RaceEntry, RaceMeta, TimedSection } from './domain.js';
@@ -187,6 +188,12 @@ function durationOrDash(value: string | null | undefined): string {
   return value ? formatDuration(parseDuration(value)) : '—';
 }
 
+function renderExpandableChart(slot: SlotGetter, lightbox: ChartLightbox, name: string, render: ChartRenderer): void {
+  const chart = slot(name);
+  render(chart);
+  lightbox.register(chart, render);
+}
+
 export function renderDashboard(container: HTMLElement, { raceMeta, racer, fieldSize, classSize, capturedAt, onRefresh }: RenderDashboardOptions): void {
   container.innerHTML = TEMPLATE;
   const slot: SlotGetter = <T extends HTMLElement = HTMLElement>(name: string): T =>
@@ -248,13 +255,15 @@ export function renderDashboard(container: HTMLElement, { raceMeta, racer, field
     ? `${racer.className} · unclassified (DNF)`
     : racer.className;
 
-  const root = requireElement(container.querySelector('.viz-root'), 'viz-root');
+  const root = requireElement(container.querySelector<HTMLElement>('.viz-root'), 'viz-root');
   const styles = getComputedStyle(root);
   const colorOverall = styles.getPropertyValue('--series-overall').trim();
   const colorClass = styles.getPropertyValue('--series-class').trim();
   const colorSection = styles.getPropertyValue('--series-section').trim();
   const colorSpeed = styles.getPropertyValue('--series-speed').trim();
   const colorGap = styles.getPropertyValue('--series-gap').trim();
+
+  const chartLightbox = createChartLightbox(root);
 
   if (racer.scoring === 'points') {
     renderPointsBreakdown(slot, subhead, racer, fieldSize, classSize, {
@@ -265,7 +274,7 @@ export function renderDashboard(container: HTMLElement, { raceMeta, racer, field
       // both modes. Free here — points mode has no speed chart.
       section: colorSpeed,
       gap: colorGap
-    });
+    }, chartLightbox);
     return;
   }
 
@@ -300,25 +309,25 @@ export function renderDashboard(container: HTMLElement, { raceMeta, racer, field
   slot('overallCardSub').textContent = `Estimated from cumulative section times; final point is the official result`;
   slot('classCardSub').textContent = `Estimated within ${racer.className}; final point is the official class result`;
 
-  lineChart(slot('chartOverall'), {
+  renderExpandableChart(slot, chartLightbox, 'chartOverall', (chart) => lineChart(chart, {
     ariaLabel: 'Overall position by section',
     clampMin: 1,
     labels: series.names,
     series: [{ name: 'Overall position', color: colorOverall, values: series.cumulativeOverallPositions }]
-  });
+  }));
 
-  lineChart(slot('chartClass'), {
+  renderExpandableChart(slot, chartLightbox, 'chartClass', (chart) => lineChart(chart, {
     ariaLabel: 'Class position by section',
     clampMin: 1,
     labels: series.names,
     series: [{ name: 'Class position', color: colorClass, values: series.cumulativeClassPositions }]
-  });
+  }));
 
   buildLegend(slot('legendSection'), [
     { name: 'Cumulative overall position', color: colorOverall },
     { name: "That section's rank alone", color: colorSection }
   ]);
-  lineChart(slot('chartSection'), {
+  renderExpandableChart(slot, chartLightbox, 'chartSection', (chart) => lineChart(chart, {
     ariaLabel: 'Cumulative position vs section-only rank',
     clampMin: 1,
     labels: series.names,
@@ -326,29 +335,29 @@ export function renderDashboard(container: HTMLElement, { raceMeta, racer, field
       { name: 'Cumulative overall position', color: colorOverall, values: series.cumulativeOverallPositions },
       { name: 'Section-only rank', color: colorSection, values: series.sectionOnlyOverallRanks }
     ]
-  });
+  }));
 
   if (racer.avgSpeedTotal != null) {
-    barChart(slot('chartSpeed'), {
+    renderExpandableChart(slot, chartLightbox, 'chartSpeed', (chart) => barChart(chart, {
       ariaLabel: 'Average speed by section',
       labels: series.names,
       values: series.avgSpeeds,
       color: colorSpeed,
       label: 'Avg speed',
       format: (v: number) => v.toFixed(1)
-    });
+    }));
   } else {
     requireElement(slot('chartSpeed').closest('.card'), 'speed card').remove();
   }
 
-  barChart(slot('chartGap'), {
+  renderExpandableChart(slot, chartLightbox, 'chartGap', (chart) => barChart(chart, {
     ariaLabel: 'Gap to the rider ahead by section',
     labels: series.names,
     values: series.gapAheadSeconds,
     color: colorGap,
     label: 'Gap ahead',
     format: (v: number) => `${v.toFixed(1)}s`
-  });
+  }));
 
   const labels = ['Section', 'Cum time', 'Overall pos', 'Class pos', 'Section overall', 'Section class', 'Avg mph', 'Gap ahead'];
   const tbody = slot<HTMLTableSectionElement>('tableBody');
@@ -378,7 +387,7 @@ export function renderDashboard(container: HTMLElement, { raceMeta, racer, field
 
 // Timekeeping enduros are scored in points dropped after key time, with raw
 // seconds recorded only at emergency checks (as the tiebreaker).
-function renderPointsBreakdown(slot: SlotGetter, subhead: HTMLElement, racer: DashboardPointsRacer, fieldSize: number, classSize: number, colors: Colors): void {
+function renderPointsBreakdown(slot: SlotGetter, subhead: HTMLElement, racer: DashboardPointsRacer, fieldSize: number, classSize: number, colors: Colors, lightbox: ChartLightbox): void {
   const { sections, checkCount, timedCheckCount } = racer;
   const labels = sections.map((s) => s.sectionName);
   const checkTick = (i: number): string => `C${i + 1}`;
@@ -402,21 +411,21 @@ function renderPointsBreakdown(slot: SlotGetter, subhead: HTMLElement, racer: Da
   slot('overallCardSub').textContent = `Cumulative position among all ${fieldSize} finishers, after each check`;
   slot('classCardSub').textContent = `Cumulative position within ${racer.className} (${classSize} riders), after each check`;
 
-  lineChart(slot('chartOverall'), {
+  renderExpandableChart(slot, lightbox, 'chartOverall', (chart) => lineChart(chart, {
     ariaLabel: 'Overall position by check',
     clampMin: 1,
     labels,
     xTick: checkTick,
     series: [{ name: 'Overall position', color: colors.overall, values: sections.map((s) => s.overallPosition) }]
-  });
+  }));
 
-  lineChart(slot('chartClass'), {
+  renderExpandableChart(slot, lightbox, 'chartClass', (chart) => lineChart(chart, {
     ariaLabel: 'Class position by check',
     clampMin: 1,
     labels,
     xTick: checkTick,
     series: [{ name: 'Class position', color: colors.class, values: sections.map((s) => s.classPosition) }]
-  });
+  }));
 
   const sectionCard = requireElement(slot('chartSection').closest('.card'), 'section card');
   requireElement(sectionCard.querySelector('h2'), 'section card title').textContent = 'Cumulative standing vs. that check alone';
@@ -426,7 +435,7 @@ function renderPointsBreakdown(slot: SlotGetter, subhead: HTMLElement, racer: Da
     { name: 'Cumulative overall position', color: colors.overall },
     { name: "That check's rank alone", color: colors.section }
   ]);
-  lineChart(slot('chartSection'), {
+  renderExpandableChart(slot, lightbox, 'chartSection', (chart) => lineChart(chart, {
     ariaLabel: 'Cumulative position vs check-alone rank',
     clampMin: 1,
     labels,
@@ -443,14 +452,14 @@ function renderPointsBreakdown(slot: SlotGetter, subhead: HTMLElement, racer: Da
         values: sections.map((s) => s.sectionOverallPosition)
       }
     ]
-  });
+  }));
 
   requireElement(slot('chartSpeed').closest('.card'), 'speed card').remove();
 
   const gapCard = requireElement(slot('chartGap').closest('.card'), 'gap card');
   requireElement(gapCard.querySelector('h2'), 'gap card title').textContent = 'Points dropped per check';
   requireElement(gapCard.querySelector('.card-sub'), 'gap card subtitle').textContent = 'Route and emergency checks — lower is better';
-  barChart(slot('chartGap'), {
+  renderExpandableChart(slot, lightbox, 'chartGap', (chart) => barChart(chart, {
     ariaLabel: 'Points dropped by check',
     labels,
     xTick: checkTick,
@@ -458,7 +467,7 @@ function renderPointsBreakdown(slot: SlotGetter, subhead: HTMLElement, racer: Da
     color: colors.gap,
     label: 'Points',
     format: (v: number) => String(v)
-  });
+  }));
 
   const headings: [string, string][] = [
     ['Check', 'Check'],

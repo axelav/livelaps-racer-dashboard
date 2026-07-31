@@ -93,6 +93,7 @@ body {
 .history-heading h2,
 .history-ledger-summary h3,
 .ledger-dialog h3,
+.chart-lightbox h3,
 .history-trends h3 {
   font-size: 17px;
   font-weight: 650;
@@ -155,6 +156,37 @@ body {
 }
 .ledger-dialog::backdrop {
   background: rgba(0, 0, 0, 0.55);
+}
+.chart-lightbox {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: var(--text-primary);
+  max-height: min(800px, calc(100vh - 48px));
+  max-width: min(1040px, calc(100vw - 32px));
+  overflow: auto;
+  padding: 18px;
+  width: min(1040px, calc(100vw - 32px));
+}
+.chart-lightbox::backdrop {
+  background: rgba(0, 0, 0, 0.55);
+}
+.chart-lightbox-head {
+  align-items: flex-start;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+}
+.chart-lightbox-legend:empty {
+  display: none;
+}
+.chart-lightbox-chart {
+  min-width: 0;
+}
+.chart-lightbox-chart svg {
+  display: block;
+  height: auto;
+  width: 100%;
 }
 .ledger-dialog-head {
   align-items: flex-start;
@@ -327,6 +359,37 @@ h1 {
   width: 100%;
   height: auto;
   overflow: hidden;
+}
+.chart-card > h2,
+.chart-card > h3 {
+  padding-right: 32px;
+}
+.chart-expand {
+  align-items: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: inline-flex;
+  height: 28px;
+  justify-content: center;
+  padding: 0;
+  position: absolute;
+  right: 10px;
+  top: 10px;
+  width: 28px;
+}
+.chart-expand:hover,
+.chart-expand:focus-visible {
+  background: var(--page);
+  border-color: var(--border);
+  color: var(--text-primary);
+  outline: none;
+}
+.chart-expand svg {
+  height: 16px;
+  width: 16px;
 }
 
 .legend {
@@ -621,7 +684,8 @@ table.data-table th {
     gap: 6px;
   }
   .history-ledger-summary,
-  .ledger-dialog-head {
+  .ledger-dialog-head,
+  .chart-lightbox-head {
     align-items: stretch;
     flex-direction: column;
   }
@@ -630,6 +694,13 @@ table.data-table th {
     width: 100%;
   }
   .ledger-dialog {
+    border-radius: 0;
+    height: 100dvh;
+    max-height: 100dvh;
+    max-width: 100vw;
+    width: 100vw;
+  }
+  .chart-lightbox {
     border-radius: 0;
     height: 100dvh;
     max-height: 100dvh;
