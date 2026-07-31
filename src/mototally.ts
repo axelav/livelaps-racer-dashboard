@@ -38,7 +38,7 @@ type GroupSummary = {
 
 export type TimedCheck = {
   seconds: number | null;
-  publishedPlace: number;
+  publishedPlace: number | null;
 };
 
 export type PointsCell = {
@@ -53,9 +53,12 @@ export type RawTimedRecord = {
   displayedNumber: string;
   brand: string;
   className: string;
-  overallPosition: number;
+  overallPosition: number | null;
   totalTimeSeconds: number | null;
   sectionTimes: (TimedCheck | null)[];
+  isSprint?: boolean;
+  sectionNames?: string[];
+  timePrecision?: number;
 };
 
 export type RawPointsRecord = {
@@ -106,8 +109,8 @@ type TimedRaceEntry = RaceEntry & {
   displayedNumber: string;
   brand: string;
   className: string;
-  overallPosition: number;
-  classPosition: number;
+  overallPosition: number | null;
+  classPosition: number | null;
   avgSpeedTotal: null;
   overallBehindByLeader: string | null;
   classBehindByLeader: string | null;
@@ -156,25 +159,52 @@ export function sanitizeHtml(html: string): string {
   return html.replace(/<\/span(?=<)/gi, '</span>');
 }
 
-function dataRows(doc: Document): HTMLTableRowElement[] {
+function dataRows(doc: Document, includeDnf = false): HTMLTableRowElement[] {
   const table = doc.querySelector('#mtR_gvResults');
   if (!table) return [];
   return Array.from(table.querySelectorAll('tr')).filter((tr) => {
-    const first = tr.querySelector('td');
-    return first !== null && /^\d+$/.test(text(first).trim());
+    const first = cellsOf(tr)[0];
+    const value = text(first).trim();
+    return /^\d+$/.test(value) || (includeDnf && /^DNF$/i.test(value));
   });
 }
 
 function cellsOf(tr: HTMLTableRowElement): HTMLTableCellElement[] {
-  return Array.from(tr.querySelectorAll('td'));
+  return Array.from(tr.querySelectorAll('th, td'));
 }
 
-// A check cell is "M:SS (place)" when timed, or "0"/blank when an untimed checkpoint.
-function parseCheckCell(td: HTMLTableCellElement): TimedCheck | null {
+function resultHeaderCells(doc: Document): HTMLTableCellElement[] {
+  const table = doc.querySelector('#mtR_gvResults');
+  if (!table) return [];
+  const header = Array.from(table.querySelectorAll('tr')).find((tr) =>
+    /^event\s*place$/i.test(text(cellsOf(tr)[0]).trim())
+  );
+  return header ? cellsOf(header) : [];
+}
+
+// Restart/enduro timed cells include their published test place; Sprint Enduro
+// cells contain only the exact test time.
+function parseTimedCell(td: HTMLTableCellElement): TimedCheck | null {
   const cellText = text(td).replace(/ /g, ' ').trim();
-  const m = cellText.match(/^(\d+:\d{2})\s*\((\d+)\)$/);
-  if (!m) return null;
-  return { seconds: parseClock(m[1]), publishedPlace: Number(m[2]) };
+  const placed = cellText.match(/^((?:\d+:)?\d{1,2}:\d{2}(?:\.\d+)?)\s*\((\d+)\)$/);
+  if (placed) return { seconds: parseClock(placed[1]), publishedPlace: Number(placed[2]) };
+  const seconds = parseClock(cellText);
+  return seconds == null ? null : { seconds, publishedPlace: null };
+}
+
+function clockFractionDigits(value: string): number {
+  return value.match(/:\d{2}\.(\d+)(?:\s*\(\d+\))?$/)?.[1]?.length ?? 0;
+}
+
+function formatSprintSectionName(value: string): string {
+  const name = value.replace(/\s+/g, ' ').trim();
+  const match = name.match(/^T(\d)(\d+)$/i);
+  return match ? `T${match[1]} ${match[2]}` : name;
+}
+
+function parseEventPosition(cell: HTMLTableCellElement): number | null {
+  const value = text(cell).trim();
+  return /^\d+$/.test(value) ? Number(value) : null;
 }
 
 // Points-format check cells: "7" (route check, points dropped), "11/656 (53)"
@@ -303,28 +333,37 @@ function parseResultsPoints(rows: readonly HTMLTableRowElement[]): RawPointsReco
 }
 
 export function parseResults(doc: Document): RawRecord[] {
-  const rows = dataRows(doc);
-  if (rows.length === 0) return [];
+  const rankedRows = dataRows(doc);
+  if (rankedRows.length === 0) return [];
 
-  const winnerCells = cellsOf(requireAt(rows, 0));
+  const winnerCells = cellsOf(requireAt(rankedRows, 0));
 
   // Timekeeping enduros total "points/emergency seconds" (e.g. "25/599");
-  // sprint enduros total a clock time (e.g. "5:00").
+  // sprint enduros total a clock time (e.g. "5:00.0").
   if (POINTS_TOTAL_PATTERN.test(text(requireAt(winnerCells, winnerCells.length - 1)).trim())) {
-    return parseResultsPoints(rows);
+    return parseResultsPoints(rankedRows);
   }
 
-  // Timed columns = check columns where the winner (first data row) has a time.
+  const rows = dataRows(doc, true);
   const checkStart = FIXED_COLS;
   const checkEnd = winnerCells.length - TRAILING_COLS; // exclusive
   const timedCols: number[] = [];
   for (let c = checkStart; c < checkEnd; c++) {
-    if (parseCheckCell(requireAt(winnerCells, c)) !== null) timedCols.push(c);
+    if (parseTimedCell(requireAt(winnerCells, c)) !== null) timedCols.push(c);
   }
+
+  const isSprint = timedCols.some(
+    (column) => parseTimedCell(requireAt(winnerCells, column))?.publishedPlace === null
+  );
+  const headers = resultHeaderCells(doc);
+  const sectionNames = isSprint
+    ? timedCols.map((column) => formatSprintSectionName(text(headers[column]).replace(/ /g, ' ')))
+    : [];
 
   return rows.map((tr) => {
     const cells = cellsOf(tr);
-    const sectionTimes = timedCols.map((c) => parseCheckCell(requireAt(cells, c))); // null = DNF at that section
+    const sectionTimes = timedCols.map((column) => parseTimedCell(requireAt(cells, column)));
+    const totalCell = text(requireAt(cells, cells.length - 1));
     const brandCell = requireAt(cells, 6);
     return {
       id: Number(text(requireAt(cells, 1)).trim()),
@@ -332,9 +371,17 @@ export function parseResults(doc: Document): RawRecord[] {
       displayedNumber: text(requireAt(cells, 2)).trim(),
       brand: (text(brandCell.querySelector('span')) || text(brandCell)).replace(/<.*$/s, '').trim(),
       className: text(requireAt(cells, 7)).trim(),
-      overallPosition: Number(text(requireAt(cells, 0)).trim()),
-      totalTimeSeconds: parseClock(text(requireAt(cells, cells.length - 1))),
-      sectionTimes
+      overallPosition: parseEventPosition(requireAt(cells, 0)),
+      totalTimeSeconds: parseClock(totalCell),
+      sectionTimes,
+      isSprint,
+      sectionNames,
+      timePrecision: isSprint
+        ? Math.max(
+          clockFractionDigits(totalCell),
+          ...timedCols.map((column) => clockFractionDigits(text(requireAt(cells, column))))
+        )
+        : 0
     };
   });
 }
@@ -491,7 +538,8 @@ export function deriveStandings(rawRecords: readonly RawRecord[]): RaceEntry[] {
   const n = timedRecords.length;
   const sectionCount = timedRecords[0]?.sectionTimes.length ?? 0;
 
-  // cumulative seconds per racer per section; null from the first missing section on (DNF).
+  // Sprint Enduro competitors can complete a later test after skipping an
+  // earlier one. Restart enduros remain terminal after their first miss.
   const cum: (number | null)[][] = timedRecords.map((r) => {
     const out: (number | null)[] = [];
     let acc = 0;
@@ -499,7 +547,7 @@ export function deriveStandings(rawRecords: readonly RawRecord[]): RaceEntry[] {
     for (let i = 0; i < sectionCount; i++) {
       const st = r.sectionTimes[i];
       if (dead || st == null || st.seconds == null) {
-        dead = true;
+        if (!r.isSprint) dead = true;
         out.push(null);
       } else {
         acc += st.seconds;
@@ -535,16 +583,16 @@ export function deriveStandings(rawRecords: readonly RawRecord[]): RaceEntry[] {
     return bestAhead == null ? 0 : me - bestAhead;
   };
 
-  const sectionClassRank = (si: number, ri: number): number | null => {
+  const sectionRank = (si: number, ri: number, sameClass: boolean): number | null => {
     const current = requireAt(timedRecords, ri);
     const st = current.sectionTimes[si];
     if (st == null || st.seconds == null) return null;
     let pos = 1;
     for (const [j, otherRecord] of timedRecords.entries()) {
       if (j === ri) continue;
-      if (otherRecord.className !== current.className) continue;
-      const o = otherRecord.sectionTimes[si];
-      if (o != null && o.seconds != null && o.seconds < st.seconds) pos++;
+      if (sameClass && otherRecord.className !== current.className) continue;
+      const other = otherRecord.sectionTimes[si];
+      if (other != null && other.seconds != null && other.seconds < st.seconds) pos++;
     }
     return pos;
   };
@@ -555,8 +603,10 @@ export function deriveStandings(rawRecords: readonly RawRecord[]): RaceEntry[] {
   const totals = timedRecords.filter(finishedTimedRace).map((r) => r.totalTimeSeconds);
   const overallLeaderTotal = totals.length ? Math.min(...totals) : 0;
 
-  const timedClassPosition = (ri: number): number => {
+  const timedClassPosition = (ri: number): number | null => {
     const me = requireAt(timedRecords, ri);
+    if (!finishedTimedRace(me) && me.isSprint) return null;
+
     let pos = 1;
     for (const [j, other] of timedRecords.entries()) {
       if (j === ri) continue;
@@ -567,7 +617,13 @@ export function deriveStandings(rawRecords: readonly RawRecord[]): RaceEntry[] {
         pos++;
       } else if (otherFinished && meFinished && other.totalTimeSeconds < me.totalTimeSeconds) {
         pos++;
-      } else if (!otherFinished && !meFinished && other.overallPosition < me.overallPosition) {
+      } else if (
+        !otherFinished &&
+        !meFinished &&
+        other.overallPosition != null &&
+        me.overallPosition != null &&
+        other.overallPosition < me.overallPosition
+      ) {
         pos++;
       }
     }
@@ -583,14 +639,14 @@ export function deriveStandings(rawRecords: readonly RawRecord[]): RaceEntry[] {
       const gap = gapAhead(si, ri);
       const cumulativeSeconds = requireAt(requireAt(cum, ri), si);
       return {
-        sectionName: `Test ${si + 1}`,
-        totalCumulatedTime: cumulativeSeconds == null ? null : formatHMS(cumulativeSeconds),
+        sectionName: r.sectionNames?.[si] || `Test ${si + 1}`,
+        totalCumulatedTime: cumulativeSeconds == null ? null : formatHMS(cumulativeSeconds, r.timePrecision),
         overallPosition: si === sectionCount - 1 && finishedTimedRace(r) ? r.overallPosition : cumulativePosition(si, ri, false),
         classPosition: si === sectionCount - 1 && finishedTimedRace(r) ? classPosition : cumulativePosition(si, ri, true),
-        sectionOverallPosition: st?.publishedPlace ?? null,
-        sectionClassPosition: sectionClassRank(si, ri),
+        sectionOverallPosition: st?.publishedPlace ?? sectionRank(si, ri, false),
+        sectionClassPosition: sectionRank(si, ri, true),
         avgSpeed: null,
-        overallBehindBy: gap == null ? null : formatHMS(gap)
+        overallBehindBy: gap == null ? null : formatHMS(gap, r.timePrecision)
       };
     });
 
@@ -603,8 +659,8 @@ export function deriveStandings(rawRecords: readonly RawRecord[]): RaceEntry[] {
       overallPosition: r.overallPosition,
       classPosition,
       avgSpeedTotal: null,
-      overallBehindByLeader: finishedTimedRace(r) ? formatHMS(r.totalTimeSeconds - overallLeaderTotal) : null,
-      classBehindByLeader: finishedTimedRace(r) ? formatHMS(r.totalTimeSeconds - classLeaderTotal) : null,
+      overallBehindByLeader: finishedTimedRace(r) ? formatHMS(r.totalTimeSeconds - overallLeaderTotal, r.timePrecision) : null,
+      classBehindByLeader: finishedTimedRace(r) ? formatHMS(r.totalTimeSeconds - classLeaderTotal, r.timePrecision) : null,
       sections
     };
   });

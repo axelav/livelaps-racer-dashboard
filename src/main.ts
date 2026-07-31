@@ -56,14 +56,13 @@ function isDashboardRacer(entry: RaceEntry): entry is DashboardRacer {
     entry.displayedNumber == null ||
     entry.brand == null ||
     entry.className == null ||
-    entry.overallPosition == null ||
-    entry.classPosition == null ||
     !Array.isArray(entry.sections)
   ) {
     return false;
   }
 
   if (entry.scoring === 'points') {
+    if (entry.overallPosition == null || entry.classPosition == null) return false;
     return (
       entry.maxChk != null &&
       entry.checkCount != null &&
