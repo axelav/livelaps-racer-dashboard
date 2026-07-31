@@ -75,3 +75,7 @@ _Avoid_: Shared profile, user account
 **Race entry**:
 One racer's result within a Race Snapshot.
 _Avoid_: Racer, profile
+
+**Sprint Enduro**:
+An enduro competition scored by the exact accumulated time across individually timed tests. Each test retains its timing-source label and recorded sub-second precision.
+_Avoid_: Timekeeping Enduro, restart enduro

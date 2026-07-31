@@ -1,10 +1,10 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { MOTOTALLY_FIXTURE_HTML, docFromHtml } from './fixtures/mototally.fixture.js';
+import { MOTOTALLY_FIXTURE_HTML, SPRINT_ENDURO_FIXTURE_HTML, docFromHtml } from './fixtures/mototally.fixture.js';
 import { parseResults, parseRaceName, parseAmaSet, parseOverallOptions, pickContainingGroup, deriveStandings } from '../src/mototally.js';
 import type { RaceEntry, TimedSection } from '../src/domain.js';
 import type { RawTimedRecord } from '../src/mototally.js';
 
-type TimedStanding = RaceEntry & { sections: TimedSection[]; classPosition: number };
+type TimedStanding = Omit<RaceEntry, 'sections' | 'classPosition'> & { sections: TimedSection[]; classPosition: number | null };
 
 let doc: Document;
 beforeAll(async () => {
@@ -44,6 +44,72 @@ describe('parseResults', () => {
     ]);
     expect(b.sectionTimes.map((s) => s?.seconds)).toEqual([60, 300]);
     expect(rows.map((r) => r.brand)).toEqual(['BET', 'KTM', 'GAS']);
+  });
+});
+
+describe('parseResults for Sprint Enduros', () => {
+  it('preserves decimal test times, source labels, and partial DNF results', async () => {
+    const sprintDoc = await docFromHtml(SPRINT_ENDURO_FIXTURE_HTML);
+    const rows = parseResults(sprintDoc) as RawTimedRecord[];
+    expect(rows).toHaveLength(3);
+    expect(rows[0]).toMatchObject({
+      fullName: 'TANNER WOLFRUM',
+      totalTimeSeconds: 1292
+    });
+    expect(rows[0]?.sectionTimes.map((section) => section?.seconds)).toEqual([269, 264, 759]);
+
+    const standings = deriveStandings(rows) as TimedStanding[];
+    const winner = standings.find((entry) => entry.fullName === 'TANNER WOLFRUM');
+    const dnf = standings.find((entry) => entry.fullName === 'LOGAN MORLEY');
+    expect(winner?.sections.map((section) => section.sectionName)).toEqual(['T1 1', 'T1 2', 'T2 1']);
+    expect(winner?.sections.map((section) => section.totalCumulatedTime)).toEqual([
+      '0:04:29.000',
+      '0:08:53.000',
+      '0:21:32.000'
+    ]);
+    expect(dnf).toMatchObject({
+      overallPosition: null,
+      classPosition: null,
+      sections: [
+        { totalCumulatedTime: '0:04:38.000' },
+        { totalCumulatedTime: '0:09:17.000' },
+        { totalCumulatedTime: null }
+      ]
+    });
+  });
+
+  it('resumes Sprint cumulative timing after an uncompleted test', () => {
+    const [dnf] = deriveStandings([
+      {
+        id: 7487410,
+        fullName: 'LOGAN MORLEY',
+        displayedNumber: '172',
+        brand: 'KTM',
+        className: 'AA',
+        overallPosition: null,
+        totalTimeSeconds: 1759,
+        isSprint: true,
+        sectionNames: ['T1 1', 'T1 2', 'T2 1', 'T3 1'],
+        timePrecision: 3,
+        sectionTimes: [
+          { seconds: 278, publishedPlace: null },
+          null,
+          { seconds: 892, publishedPlace: null },
+          { seconds: 589, publishedPlace: null }
+        ]
+      }
+    ]) as TimedStanding[];
+
+    expect(dnf).toMatchObject({
+      overallPosition: null,
+      classPosition: null,
+      sections: [
+        { totalCumulatedTime: '0:04:38.000' },
+        { totalCumulatedTime: null },
+        { totalCumulatedTime: '0:19:30.000' },
+        { totalCumulatedTime: '0:29:19.000' }
+      ]
+    });
   });
 });
 

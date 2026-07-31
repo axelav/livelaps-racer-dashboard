@@ -65,4 +65,40 @@ describe('renderDashboard for a timed DNF', () => {
       'Estimated from cumulative section times; final point is the official result'
     );
   });
+  it('renders partial Sprint Enduro data without a final classification', () => {
+    const container = document.createElement('div');
+    renderDashboard(container, {
+      raceMeta: { raceName: '2026 Pine Glen Farm Sprint Enduro', modeName: 'Enduro' },
+      fieldSize: 52,
+      classSize: 7,
+      capturedAt: '2026-07-30T12:00:00.000Z',
+      onRefresh: vi.fn(),
+      racer: {
+        id: 7487410,
+        fullName: 'LOGAN MORLEY',
+        displayedNumber: '172',
+        brand: 'KTM',
+        className: 'AA',
+        overallPosition: null,
+        classPosition: null,
+        avgSpeedTotal: null,
+        overallBehindByLeader: null,
+        classBehindByLeader: null,
+        sections: [
+          { sectionName: 'T1 1', totalCumulatedTime: '0:04:38.000', overallPosition: 2, classPosition: 2, sectionOverallPosition: null, sectionClassPosition: 2, avgSpeed: null, overallBehindBy: '0:00:09.000' },
+          { sectionName: 'T1 2', totalCumulatedTime: null, overallPosition: null, classPosition: null, sectionOverallPosition: null, sectionClassPosition: null, avgSpeed: null, overallBehindBy: null },
+          { sectionName: 'T2 1', totalCumulatedTime: '0:19:30.000', overallPosition: 2, classPosition: 2, sectionOverallPosition: null, sectionClassPosition: 2, avgSpeed: null, overallBehindBy: '0:00:21.000' },
+          { sectionName: 'T3 1', totalCumulatedTime: '0:29:19.000', overallPosition: 2, classPosition: 2, sectionOverallPosition: null, sectionClassPosition: 2, avgSpeed: null, overallBehindBy: '0:00:30.000' }
+        ]
+      }
+    });
+
+    expect(mustQuery<HTMLElement>(container, '[data-slot="subhead"]').textContent).toContain(
+      'DNF after 3 of 4 timed sections'
+    );
+    expect(mustQuery<HTMLElement>(container, '[data-slot="statOverall"]').textContent.replace(/\s+/g, ' ')).toContain('— / 52');
+    expect(mustQuery<HTMLElement>(container, '[data-slot="statOverallSub"]').textContent).toBe('unclassified (DNF)');
+    expect(mustQuery<HTMLElement>(container, '[data-slot="statClass"]').textContent.replace(/\s+/g, ' ')).toContain('— / 7');
+    expect(mustQuery<HTMLElement>(container, '[data-slot="statClassSub"]').textContent).toContain('unclassified (DNF)');
+  });
 });

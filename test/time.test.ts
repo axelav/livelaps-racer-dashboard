@@ -5,6 +5,10 @@ import { parseDuration } from '../src/livelaps.js';
 describe('parseClock', () => {
   it('parses M:SS', () => expect(parseClock('27:35')).toBe(27 * 60 + 35));
   it('parses H:MM:SS', () => expect(parseClock('1:05:20')).toBe(3920));
+  it('parses fractional seconds', () => {
+    expect(parseClock('4:29.0')).toBe(269);
+    expect(parseClock('1:20:21.375')).toBe(4821.375);
+  });
   it('returns null for blank/dnf', () => {
     expect(parseClock('')).toBeNull();
     expect(parseClock(' ')).toBeNull();
@@ -19,6 +23,10 @@ describe('formatHMS', () => {
     expect(formatHMS(1655)).toBe('0:27:35');
     expect(formatHMS(0)).toBe('0:00:00');
     expect(formatHMS(3920)).toBe('1:05:20');
+  });
+  it('formats requested fractional precision', () => {
+    expect(formatHMS(269, 3)).toBe('0:04:29.000');
+    expect(formatHMS(4821.375, 3)).toBe('1:20:21.375');
   });
   it('round-trips through livelaps parseDuration', () => {
     expect(parseDuration(formatHMS(1655))).toBe(1655);

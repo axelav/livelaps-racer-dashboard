@@ -118,8 +118,8 @@ type DashboardTimedRacer = Omit<RaceEntry, 'sections' | 'scoring' | 'id' | 'disp
   displayedNumber: string | number;
   brand: string;
   className: string;
-  overallPosition: number;
-  classPosition: number;
+  overallPosition: number | null;
+  classPosition: number | null;
   avgSpeedTotal?: number | null;
   overallBehindByLeader?: string | null;
   classBehindByLeader?: string | null;
@@ -229,22 +229,24 @@ export function renderDashboard(container: HTMLElement, { raceMeta, racer, field
   boldBrand.textContent = `${racer.brand} #${racer.displayedNumber}`;
   subhead.appendChild(boldBrand);
 
-  const overallPct = Math.round((racer.overallPosition / fieldSize) * 100);
+  const overallPct = racer.overallPosition == null ? null : Math.round((racer.overallPosition / fieldSize) * 100);
   const statOverall = slot('statOverall');
   statOverall.innerHTML = '';
-  statOverall.append(`${racer.overallPosition} `);
+  statOverall.append(`${racer.overallPosition ?? '—'} `);
   const overallSmall = document.createElement('small');
   overallSmall.textContent = `/ ${fieldSize}`;
   statOverall.appendChild(overallSmall);
-  slot('statOverallSub').textContent = `top ${overallPct}% of the field`;
+  slot('statOverallSub').textContent = overallPct == null ? 'unclassified (DNF)' : `top ${overallPct}% of the field`;
 
   const statClass = slot('statClass');
   statClass.innerHTML = '';
-  statClass.append(`${racer.classPosition} `);
+  statClass.append(`${racer.classPosition ?? '—'} `);
   const classSmall = document.createElement('small');
   classSmall.textContent = `/ ${classSize}`;
   statClass.appendChild(classSmall);
-  slot('statClassSub').textContent = racer.className;
+  slot('statClassSub').textContent = racer.classPosition == null
+    ? `${racer.className} · unclassified (DNF)`
+    : racer.className;
 
   const root = requireElement(container.querySelector('.viz-root'), 'viz-root');
   const styles = getComputedStyle(root);
@@ -271,8 +273,9 @@ export function renderDashboard(container: HTMLElement, { raceMeta, racer, field
   const sectionCount = series.names.length;
   const completedSections = series.cumTimes.filter((time) => time != null).length;
   const finalTime = series.cumTimes.at(-1);
+  const isFinished = racer.overallPosition != null && finalTime != null;
   const finishSummary =
-    finalTime == null
+    !isFinished
       ? `DNF after ${completedSections} of ${sectionCount} timed sections`
       : `finished in ${finalTime} across ${sectionCount} timed sections`;
   subhead.appendChild(

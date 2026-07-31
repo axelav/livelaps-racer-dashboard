@@ -26,3 +26,15 @@ export async function docFromHtml(html: string): Promise<Document> {
   document.body.innerHTML = html;
   return document;
 }
+
+// Representative Moto-Tally Sprint Enduro results: decimal test times, source
+// labels, and an unclassified rider who stopped after the second test.
+export const SPRINT_ENDURO_FIXTURE_HTML = `
+<h1 id="mtR_h1RREventName">2026 Pine Glen Farm Sprint Enduro</h1>
+<table id="mtR_gvResults">
+  <tr><td>OVERALL Long Course - Check-by-Check Score by Place</td></tr>
+  <tr><td>Event Place</td><td>AMA#</td><td>Bike#</td><td>Rider Name</td><td>Club</td><td>Sponsors</td><td>Brand</td><td>Class</td><td>T11</td><td>T12</td><td>T21</td><td>Tests</td><td>Total Time</td></tr>
+  <tr><td>1</td><td>826141</td><td>183</td><td>TANNER WOLFRUM</td><td></td><td></td><td>SCO</td><td>AA</td><td>4:29.0</td><td>4:24.0</td><td>12:39.0</td><td>3</td><td>21:32.000</td></tr>
+  <tr><td>2</td><td>3140915</td><td>189</td><td>TUCKER BEDDIGES</td><td></td><td></td><td>HUS</td><td>A 251+</td><td>4:33.0</td><td>4:28.0</td><td>12:52.0</td><td>3</td><td>21:53.000</td></tr>
+  <tr><td>DNF</td><td>7487410</td><td>172</td><td>LOGAN MORLEY</td><td></td><td></td><td>KTM</td><td>AA</td><td>4:38.0</td><td>4:39.0</td><td></td><td>2</td><td>9:17.000</td></tr>
+</table>`;
