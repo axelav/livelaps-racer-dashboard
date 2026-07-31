@@ -583,16 +583,16 @@ export function deriveStandings(rawRecords: readonly RawRecord[]): RaceEntry[] {
     return bestAhead == null ? 0 : me - bestAhead;
   };
 
-  const sectionClassRank = (si: number, ri: number): number | null => {
+  const sectionRank = (si: number, ri: number, sameClass: boolean): number | null => {
     const current = requireAt(timedRecords, ri);
     const st = current.sectionTimes[si];
     if (st == null || st.seconds == null) return null;
     let pos = 1;
     for (const [j, otherRecord] of timedRecords.entries()) {
       if (j === ri) continue;
-      if (otherRecord.className !== current.className) continue;
-      const o = otherRecord.sectionTimes[si];
-      if (o != null && o.seconds != null && o.seconds < st.seconds) pos++;
+      if (sameClass && otherRecord.className !== current.className) continue;
+      const other = otherRecord.sectionTimes[si];
+      if (other != null && other.seconds != null && other.seconds < st.seconds) pos++;
     }
     return pos;
   };
@@ -643,8 +643,8 @@ export function deriveStandings(rawRecords: readonly RawRecord[]): RaceEntry[] {
         totalCumulatedTime: cumulativeSeconds == null ? null : formatHMS(cumulativeSeconds, r.timePrecision),
         overallPosition: si === sectionCount - 1 && finishedTimedRace(r) ? r.overallPosition : cumulativePosition(si, ri, false),
         classPosition: si === sectionCount - 1 && finishedTimedRace(r) ? classPosition : cumulativePosition(si, ri, true),
-        sectionOverallPosition: st?.publishedPlace ?? null,
-        sectionClassPosition: sectionClassRank(si, ri),
+        sectionOverallPosition: st?.publishedPlace ?? sectionRank(si, ri, false),
+        sectionClassPosition: sectionRank(si, ri, true),
         avgSpeed: null,
         overallBehindBy: gap == null ? null : formatHMS(gap, r.timePrecision)
       };

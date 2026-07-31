@@ -67,6 +67,7 @@ describe('parseResults for Sprint Enduros', () => {
       '0:08:53.000',
       '0:21:32.000'
     ]);
+    expect(winner?.sections.map((section) => section.sectionOverallPosition)).toEqual([1, 1, 1]);
     expect(dnf).toMatchObject({
       overallPosition: null,
       classPosition: null,
